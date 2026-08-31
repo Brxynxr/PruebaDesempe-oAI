@@ -5,7 +5,7 @@ client = TestClient(app)
 
 def test_root_endpoint():
     """
-    Verifica que la ruta raíz responda correctamente con código 200 y mensaje de bienvenida.
+    Verifies root endpoint returns 200 OK and welcome message.
     """
     response = client.get("/")
     assert response.status_code == 200
@@ -13,7 +13,7 @@ def test_root_endpoint():
 
 def test_health_check_endpoint():
     """
-    Verifica que el endpoint /api/v1/health responda con status 'ok'.
+    Verifies health check endpoint /api/v1/health returns status 'ok'.
     """
     response = client.get("/api/v1/health")
     assert response.status_code == 200

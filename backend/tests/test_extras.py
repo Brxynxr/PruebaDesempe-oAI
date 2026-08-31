@@ -9,7 +9,7 @@ VALID_HEADERS = {"X-API-Key": settings.BACKEND_API_KEY}
 
 def test_response_cache_hit_and_miss():
     """
-    Verifica el comportamiento de miss y hit en el almacén de caché TTL.
+    Verifies cache miss and hit behaviors on TTL response store.
     """
     cache = ResponseCache(ttl_seconds=10)
     query = "¿Cuánto cuesta la matrícula?"
@@ -31,13 +31,13 @@ def test_response_cache_hit_and_miss():
 
 def test_metrics_endpoint():
     """
-    Verifica que el endpoint GET /api/v1/metrics requiera autenticación y devuelva métricas.
+    Verifies GET /api/v1/metrics endpoint requires authentication and returns analytics metrics.
     """
-    # 1. Sin API Key -> 401 Unauthorized
+    # 1. Unauthenticated -> 401 Unauthorized
     res_unauth = client.get("/api/v1/metrics")
     assert res_unauth.status_code == 401
     
-    # 2. Con API Key -> 200 OK
+    # 2. Authenticated -> 200 OK
     res = client.get("/api/v1/metrics", headers=VALID_HEADERS)
     assert res.status_code == 200
     data = res.json()

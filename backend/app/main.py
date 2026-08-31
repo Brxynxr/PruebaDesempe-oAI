@@ -14,9 +14,9 @@ from app.db.vector_store import VectorStore
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
-    Ciclo de vida de la aplicación FastAPI.
-    Al iniciar la aplicación, se realiza la ingesta automática de los documentos del negocio
-    en ChromaDB si la colección no se encuentra poblada.
+    Application lifespan handler.
+    On startup, automatically populates ChromaDB vector database with business knowledge base
+    documents if collection is currently empty.
     """
     data_dir = os.path.join(os.path.dirname(__file__), "data")
     vector_store = VectorStore(collection_name="academia_lumina_kb")
@@ -26,27 +26,27 @@ async def lifespan(app: FastAPI):
         docs = ingestion.load_documents()
         chunks = ingestion.create_chunks(docs)
         vector_store.add_chunks(chunks)
-        print(f"[Lifespan] Base de datos vectorial poblada con {len(chunks)} fragmentos.")
+        print(f"[Lifespan] Vector store populated with {len(chunks)} knowledge chunks.")
     else:
-        print(f"[Lifespan] Base de datos vectorial activa con {vector_store.count()} fragmentos.")
+        print(f"[Lifespan] Vector store active with {vector_store.count()} indexed chunks.")
     
     yield
 
-# Inicialización de la aplicación FastAPI con metadata oficial
+# FastAPI application initialization with metadata
 app = FastAPI(
     title=settings.APP_NAME,
     version=settings.VERSION,
-    description="Backend modular con RAG, FastAPI y 4 protecciones de seguridad para Academia Lumina.",
+    description="Modular FastAPI backend with RAG, Groq Llama 3.3 70B, and 4 security layers for Academia Lumina.",
     docs_url="/docs",
     redoc_url="/redoc",
     lifespan=lifespan
 )
 
-# Asociar el limiter de SlowAPI a la aplicación
+# Register SlowAPI rate limiter
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-# Configuración de CORS
+# CORS middleware configuration
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -55,16 +55,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Inclusión del router principal de API v1
+# Include v1 API router
 app.include_router(api_v1_router, prefix="/api/v1")
 
-@app.get("/", summary="Ruta raíz de bienvenida")
+@app.get("/", summary="Root welcome endpoint")
 def root():
     """
-    Ruta raíz para comprobación rápida de funcionamiento.
+    Root path for quick availability check.
     """
     return {
-        "message": f"Bienvenido a la API de {settings.APP_NAME}",
+        "message": f"Welcome to the {settings.APP_NAME} API",
         "docs": "/docs",
         "health": "/api/v1/health"
     }

@@ -1,7 +1,7 @@
 import re
 from fastapi import HTTPException, status
 
-# Patrones comunes utilizados en ataques de prompt injection
+# Common regex patterns used in Prompt Injection / Jailbreak attacks
 PROMPT_INJECTION_PATTERNS = [
     r"ignore\s+(all\s+)?(previous|prior)\s+instructions",
     r"forget\s+(all\s+)?(previous|prior)\s+instructions",
@@ -20,11 +20,11 @@ PROMPT_INJECTION_PATTERNS = [
 
 def validate_prompt_injection(message: str) -> None:
     """
-    Valida el mensaje del usuario frente a patrones conocidos de Prompt Injection.
-    Si se detecta una amenaza, interrumpe el procesamiento lanzando una excepción HTTP 400.
+    Validates user input against known Prompt Injection patterns.
+    If a potential threat is detected, halts execution with an HTTP 400 Exception.
     
-    :param message: Texto enviado por el usuario.
-    :raises HTTPException: Si el mensaje contiene un intento de prompt injection.
+    :param message: Raw text message sent by user.
+    :raises HTTPException: Status 400 Bad Request if prompt injection is detected.
     """
     clean_message = message.lower()
     
@@ -32,5 +32,5 @@ def validate_prompt_injection(message: str) -> None:
         if re.search(pattern, clean_message):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Solicitud rechazada por políticas de seguridad (intento de manipulación de prompt detectado)."
+                detail="Request rejected due to security policy (Prompt Injection attempt detected)."
             )

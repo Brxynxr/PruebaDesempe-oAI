@@ -9,40 +9,40 @@ from app.services.metrics_service import metrics_service
 from app.schemas.chat import ChatResponse, SourceDocument
 
 SYSTEM_PROMPT = f"""
-Eres el Asistente Inteligente de Atención al Cliente de 'Academia Lumina', una reconocida academia de idiomas en Colombia.
+You are the Intelligent Customer Support Assistant for 'Academia Lumina', a premier language academy in Colombia.
 
-TU OBJETIVO:
-Responder las dudas de futuros y actuales estudiantes sobre programas de idiomas (inglés, francés, portugués), precios, modalidades (presencial y virtual), horarios, inscripciones y certificaciones.
+YOUR GOAL:
+Answer inquiries from prospective and current students regarding language programs (English, French, Portuguese), pricing, modalities (in-person and virtual), class schedules, enrollment dates, and level certifications.
 
-REGLAS DE COMPORTAMIENTO Y TONO:
-1. TONO DE MARCA: Sé siempre amigable, cercano, profesional y servicial.
-2. REGLA ESTRICTA ANTI-ALUCINACIÓN: Responde ÚNICAMENTE basándote en la información proporcionada en la sección 'CONTEXTO DE NEGOCIO'. No inventes precios, horarios ni políticas que no estén explícitamente escritas en el contexto.
-3. REGLA DE ESCALAMIENTO FUERA DE ALCANCE (OUT-OF-SCOPE): Si la pregunta del usuario se refiere a un tema NO cubierto en el contexto (por ejemplo: intercambios culturales al exterior, becas deportivas, convenios corporativos a medida o tours físicos), debes responder amablemente indicando que no posees esa información en los documentos oficiales e invitar al usuario a chatear con un asesor humano a través de WhatsApp mediante la URL exacta: {settings.WHATSAPP_URL}.
+BRAND TONE & BEHAVIOR RULES:
+1. BRAND TONE: Maintain a warm, friendly, professional, and helpful tone at all times.
+2. STRICT ANTI-HALLUCINATION RULE: Answer ONLY based on the information provided in the 'BUSINESS CONTEXT' section. Do NOT invent prices, schedules, or policies not explicitly written in the context.
+3. OUT-OF-SCOPE ESCALATION RULE: If the user's question refers to a topic NOT covered in the official context (for example: international cultural exchange programs, sports scholarships, custom corporate deals, or physical campus tours), politely state that official documents do not contain that information and invite the user to speak directly with a human advisor via WhatsApp using the exact URL: {settings.WHATSAPP_URL}.
 
-EJEMPLOS FEW-SHOT DE REFERENCIA:
+FEW-SHOT REFERENCE EXAMPLES:
 
-Ejemplo 1 (Pregunta dentro de alcance):
-Usuario: "¿Cuánto cuesta el nivel A1 de inglés?"
-Asistente: "El costo del nivel A1 de inglés (y de todos nuestros idiomas) es de $450.000 COP en modalidad presencial y $380.000 COP en modalidad virtual por semestre."
+Example 1 (In-Scope Direct Query):
+User: "¿Cuánto cuesta el nivel A1 de inglés?"
+Assistant: "El costo del nivel A1 de inglés (y de todos nuestros idiomas) es de $450.000 COP en modalidad presencial y $380.000 COP en modalidad virtual por semestre."
 
-Ejemplo 2 (Pregunta ambigua pero resoluble):
-Usuario: "¿Tienen francés?"
-Asistente: "¡Sí! Ofrecemos el programa de francés desde el nivel A1 hasta el C1, disponible en modalidad presencial ($450.000 COP/semestre) y virtual ($380.000 COP/semestre)."
+Example 2 (Ambiguous but Resolvable Query):
+User: "¿Tienen francés?"
+Assistant: "¡Sí! Ofrecemos el programa de francés desde el nivel A1 hasta el C1, disponible en modalidad presencial ($450.000 COP/semestre) y virtual ($380.000 COP/semestre)."
 
-Ejemplo 3 (Pregunta fuera de alcance / Escalamiento):
-Usuario: "¿Hacen intercambios culturales?"
-Asistente: "No cuento con información sobre programas de intercambio cultural en nuestros documentos oficiales. Para brindarte una mejor atención personalizada, por favor ponte en contacto directo con uno de nuestros asesores por WhatsApp: {settings.WHATSAPP_URL}."
+Example 3 (Out-of-Scope / Escalation Query):
+User: "¿Hacen intercambios culturales?"
+Assistant: "No cuento con información sobre programas de intercambio cultural en nuestros documentos oficiales. Para brindarte una mejor atención personalizada, por favor ponte en contacto directo con uno de nuestros asesores por WhatsApp: {settings.WHATSAPP_URL}."
 """
 
 class RAGService:
     """
-    Servicio principal de RAG que integra el VectorStore de ChromaDB,
-    el sistema de caché TTL en memoria y la API del modelo Llama 3.3 70B de Groq.
+    Main RAG service integrating ChromaDB vector retrieval,
+    in-memory TTL response caching, and Groq Llama 3.3 70B synthesis.
     """
 
     def __init__(self, vector_store: Optional[VectorStore] = None):
         """
-        Inicializa el cliente de Groq y el almacenamiento vectorial.
+        Initialize Groq client and ChromaDB vector store wrapper.
         """
         self.vector_store = vector_store or VectorStore(collection_name="academia_lumina_kb")
         self.groq_api_key = settings.GROQ_API_KEY
@@ -52,16 +52,15 @@ class RAGService:
 
     def generate_response(self, user_message: str, session_id: str = "default") -> ChatResponse:
         """
-        Procesa una consulta verificando la caché, recuperando contexto vectorial 
-        y generando la respuesta con Groq.
-        :param user_message: Pregunta enviada por el usuario.
-        :param session_id: ID de sesión de chat.
-        :return: Objeto ChatResponse estructurado.
+        Process chat query by checking response cache, executing semantic search,
+        and synthesizing LLM answer via Groq.
+        :param user_message: Incoming user text query.
+        :param session_id: Chat session ID.
+        :return: Structured ChatResponse object.
         """
-        # 1. Comprobar si la respuesta está en caché (Cache Hit)
+        # 1. Check in-memory TTL response cache (Cache Hit)
         cached_resp = response_cache.get(user_message)
         if cached_resp:
-            # Retornar copia de caché ajustando la sesión actual
             metrics_service.record_query(is_cached=True, is_escalated=cached_resp.is_escalated, tokens=0)
             return ChatResponse(
                 response=cached_resp.response,
@@ -71,7 +70,7 @@ class RAGService:
                 session_id=session_id
             )
 
-        # 2. Búsqueda semántica en ChromaDB
+        # 2. Vector search in ChromaDB
         search_results = self.vector_store.search(query=user_message, top_k=4)
         sources_list = [
             SourceDocument(
@@ -82,19 +81,19 @@ class RAGService:
             for res in search_results
         ]
 
-        context_str = "\n\n---\n\n".join([r["content"] for r in search_results]) if search_results else "No hay contexto disponible."
+        context_str = "\n\n---\n\n".join([r["content"] for r in search_results]) if search_results else "No context available."
 
         user_prompt = f"""
-CONTEXTO DE NEGOCIO RECUPERADO:
+RETRIEVED BUSINESS CONTEXT:
 {context_str}
 
-PREGUNTA DEL USUARIO:
+USER QUESTION:
 {user_message}
 
-RESPUESTA DEL ASISTENTE (recuerda seguir las reglas anti-alucinación y el tono de marca):
+ASSISTANT RESPONSE (remember anti-hallucination and brand tone rules):
 """
 
-        # 3. Si la API Key de Groq no está activa (modo desarrollo/simulado)
+        # 3. Fallback when Groq API key is not yet configured (development/simulated mode)
         if not self.client:
             is_escalated = any(term in user_message.lower() for term in ["intercambio", "beca", "tour", "corporativo"])
             if is_escalated:
@@ -119,12 +118,11 @@ RESPUESTA DEL ASISTENTE (recuerda seguir las reglas anti-alucinación y el tono 
                 session_id=session_id
             )
             
-            # Guardar en caché y registrar métrica
             response_cache.set(user_message, chat_response)
             metrics_service.record_query(is_cached=False, is_escalated=is_escalated, tokens=150)
             return chat_response
 
-        # 4. Invocación a Groq Llama 3.3 70B
+        # 4. Invoke Groq Llama 3.3 70B
         try:
             chat_completion = self.client.chat.completions.create(
                 messages=[
@@ -148,7 +146,6 @@ RESPUESTA DEL ASISTENTE (recuerda seguir las reglas anti-alucinación y el tono 
                 session_id=session_id
             )
 
-            # Almacenar en caché para futuras consultas idénticas
             response_cache.set(user_message, chat_response)
             metrics_service.record_query(is_cached=False, is_escalated=is_escalated, tokens=350)
 
