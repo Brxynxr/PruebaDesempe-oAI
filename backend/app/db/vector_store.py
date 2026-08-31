@@ -5,34 +5,34 @@ from app.core.config import settings
 
 class VectorStore:
     """
-    Encapsulates ChromaDB persistent client for embedding storage
-    and semantic similarity search.
+    Encapsula el cliente persistente de ChromaDB para gestión de embeddings
+    y búsquedas por similitud semántica.
     """
 
     def __init__(self, collection_name: str = "academia_lumina_kb", persist_dir: Optional[str] = None):
         """
-        Initialize persistent connection to ChromaDB.
-        :param collection_name: Collection identifier in ChromaDB.
-        :param persist_dir: Optional override directory for persistence.
+        Inicializa la conexión persistente con ChromaDB.
+        :param collection_name: Nombre de la colección en ChromaDB.
+        :param persist_dir: Directorio opcional para sobreescribir la ruta de persistencia.
         """
         self.persist_directory = persist_dir or settings.CHROMA_DB_DIR
         os.makedirs(self.persist_directory, exist_ok=True)
         
-        # Persistent ChromaDB client on disk
+        # Cliente persistente de ChromaDB en disco
         self.client = chromadb.PersistentClient(path=self.persist_directory)
         self.collection_name = collection_name
         self.collection = self.client.get_or_create_collection(name=self.collection_name)
 
     def count(self) -> int:
         """
-        Returns total number of chunks stored in collection.
+        Devuelve el número total de fragmentos almacenados en la colección.
         """
         return self.collection.count()
 
     def add_chunks(self, chunks: List[Dict[str, Any]]):
         """
-        Indexes text chunks into ChromaDB idempotently.
-        :param chunks: List of chunk dictionaries from IngestionService.
+        Indexa fragmentos de texto en ChromaDB de forma idempotente.
+        :param chunks: Lista de fragmentos producidos por IngestionService.
         """
         if not chunks:
             return
@@ -49,10 +49,10 @@ class VectorStore:
 
     def search(self, query: str, top_k: int = 4) -> List[Dict[str, Any]]:
         """
-        Performs semantic similarity search returning top-k matching chunks.
-        :param query: Search query text.
-        :param top_k: Number of results to retrieve.
-        :return: List of result dictionaries containing content, source, and distance.
+        Realiza búsqueda de k fragmentos más similares semánticamente a la consulta.
+        :param query: Pregunta o texto de consulta del usuario.
+        :param top_k: Número de resultados a retornar.
+        :return: Lista de fragmentos con texto, fuente y distancia de similitud.
         """
         results = self.collection.query(
             query_texts=[query],
@@ -68,7 +68,7 @@ class VectorStore:
             for doc, meta, dist in zip(docs, metas, distances):
                 formatted_results.append({
                     "content": doc,
-                    "source": meta.get("source", "unknown"),
+                    "source": meta.get("source", "desconocido"),
                     "distance": dist
                 })
 

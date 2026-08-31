@@ -5,16 +5,16 @@ from typing import List, Dict, Any
 
 class IngestionService:
     """
-    Service responsible for loading, section-aware chunking (with overlap),
-    and indexing business Markdown knowledge base documents.
+    Servicio encargado de la lectura, fragmentación (chunking con solapamiento) 
+    e ingesta de los documentos de conocimiento del negocio.
     """
 
     def __init__(self, data_dir: str, chunk_size: int = 1000, chunk_overlap: int = 200):
         """
-        Initialize ingestion service.
-        :param data_dir: Directory path containing business .md knowledge files.
-        :param chunk_size: Desired target character size per chunk.
-        :param chunk_overlap: Overlap character length between adjacent chunks.
+        Inicializa el servicio de ingesta.
+        :param data_dir: Directorio donde se encuentran los archivos .md del negocio.
+        :param chunk_size: Tamaño máximo deseado de caracteres por fragmento.
+        :param chunk_overlap: Cantidad de caracteres de solapamiento entre fragmentos.
         """
         self.data_dir = data_dir
         self.chunk_size = chunk_size
@@ -22,8 +22,8 @@ class IngestionService:
 
     def load_documents(self) -> List[Dict[str, str]]:
         """
-        Reads all Markdown (.md) files in data_dir.
-        :return: List of dictionaries containing 'source' (filename) and 'content'.
+        Lee todos los archivos Markdown (.md) presentes en el directorio data_dir.
+        :return: Lista de diccionarios conteniendo 'source' (nombre del archivo) y 'content'.
         """
         documents = []
         pattern = os.path.join(self.data_dir, "*.md")
@@ -41,10 +41,10 @@ class IngestionService:
 
     def create_chunks(self, documents: List[Dict[str, str]]) -> List[Dict[str, Any]]:
         """
-        Chunks documents by logical Markdown section headers (# / ## / ###) or paragraphs,
-        preserving table integrity and context overlap.
-        :param documents: Loaded document list.
-        :return: List of structured chunk dictionaries with text and metadata.
+        Fragmenta los documentos respetando secciones lógicas (encabezados de Markdown # / ## / ###)
+        o párrafos grandes, asegurando que tablas y bloques semánticos se mantengan íntegros.
+        :param documents: Documentos cargados.
+        :return: Lista de fragmentos estructurados con texto y metadatos.
         """
         chunks = []
         chunk_counter = 0
@@ -53,7 +53,7 @@ class IngestionService:
             text = doc["content"]
             source = doc["source"]
 
-            # Split primarily by Markdown headers (# / ##)
+            # Dividir principalmente por encabezados Markdown (## o #)
             sections = re.split(r'\n(?=#{1,3}\s)', text)
             
             for section in sections:
@@ -61,7 +61,7 @@ class IngestionService:
                 if not section_text:
                     continue
 
-                # If section exceeds max size, split by double newlines (paragraphs)
+                # Si la sección excede el tamaño máximo, dividir por párrafos
                 if len(section_text) > self.chunk_size:
                     paragraphs = section_text.split("\n\n")
                     sub_chunk = ""

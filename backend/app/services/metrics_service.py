@@ -2,12 +2,12 @@ from typing import Dict, Any
 
 class MetricsService:
     """
-    Service tracking and computing operational business metrics:
-    - Total queries processed.
-    - Queries served from cache (cache hits).
-    - Queries escalated to human support via WhatsApp.
-    - Escalation rate (%) and cache hit rate (%).
-    - Estimated LLM inference cost ($ USD).
+    Servicio encargado de monitorear y calcular métricas operativas del negocio:
+    - Cantidad total de consultas atendidas.
+    - Respuestas servidas desde la caché (cache hits).
+    - Cantidad de consultas escaladas a asesor por WhatsApp.
+    - Tasa de escalamiento (%) y tasa de éxito de la caché (%).
+    - Estimación de costos ($ USD).
     """
 
     def __init__(self):
@@ -18,7 +18,7 @@ class MetricsService:
 
     def record_query(self, is_cached: bool = False, is_escalated: bool = False, tokens: int = 250) -> None:
         """
-        Records a newly processed interaction metric.
+        Registra una nueva interacción procesada por el backend.
         """
         self.total_queries += 1
         if is_cached:
@@ -29,7 +29,7 @@ class MetricsService:
 
     def get_metrics_summary(self) -> Dict[str, Any]:
         """
-        Returns structured summary dictionary of operational metrics.
+        Retorna un resumen estructurado de todas las métricas acumuladas.
         """
         escalation_rate = (
             round((self.escalated_queries / self.total_queries) * 100, 2)
@@ -40,7 +40,7 @@ class MetricsService:
             if self.total_queries > 0 else 0.0
         )
         
-        # Groq Llama 3.3 70B inference is 100% free on official tier
+        # El modelo Groq Llama 3.3 70B es 100% gratuito en su nivel de inferencia oficial
         estimated_cost_usd = 0.0
 
         return {
@@ -53,5 +53,5 @@ class MetricsService:
             "estimated_cost_usd": f"${estimated_cost_usd:.4f} USD (Groq Free Tier)"
         }
 
-# Global singleton metrics service instance
+# Instancia global del servicio de métricas
 metrics_service = MetricsService()

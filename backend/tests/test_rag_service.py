@@ -7,7 +7,7 @@ client = TestClient(app)
 
 def test_rag_service_in_scope_query():
     """
-    Verifies in-scope pricing inquiries answer correctly without triggering escalation.
+    Verifica que consultas sobre precios dentro del scope respondan sin requerir escalamiento.
     """
     service = RAGService()
     response = service.generate_response(user_message="¿Cuánto cuesta el nivel A1 de inglés?")
@@ -18,7 +18,7 @@ def test_rag_service_in_scope_query():
 
 def test_rag_service_out_of_scope_query():
     """
-    Verifies out-of-scope queries (e.g., cultural exchange) trigger WhatsApp escalation link.
+    Verifica que consultas fuera del scope (ej. intercambios culturales) activen el escalamiento a WhatsApp.
     """
     service = RAGService()
     response = service.generate_response(user_message="¿Tienen programas de intercambio cultural a Canadá?")
@@ -29,7 +29,7 @@ def test_rag_service_out_of_scope_query():
 
 def test_chat_api_endpoint():
     """
-    Integration test for POST /api/v1/chat endpoint with valid X-API-Key header.
+    Prueba de integración del endpoint POST /api/v1/chat enviando el header X-API-Key.
     """
     headers = {"X-API-Key": settings.BACKEND_API_KEY}
     payload = {

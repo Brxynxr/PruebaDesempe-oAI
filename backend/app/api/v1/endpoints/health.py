@@ -4,10 +4,10 @@ from app.core.config import settings
 
 router = APIRouter()
 
-@router.get("/health", response_model=HealthResponse, summary="Verify system health status")
+@router.get("/health", response_model=HealthResponse, summary="Verificar el estado de salud de la API")
 def get_health_status() -> HealthResponse:
     """
-    Health check endpoint for deployment monitoring and verification.
+    Endpoint de comprobación de estado para monitoreo y verificación de despliegue.
     """
     return HealthResponse(
         status="ok",

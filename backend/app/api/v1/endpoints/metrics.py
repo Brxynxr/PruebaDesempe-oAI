@@ -7,15 +7,15 @@ router = APIRouter()
 
 @router.get(
     "/metrics", 
-    summary="Get operational metrics and customer support statistics",
+    summary="Obtener métricas y estadísticas operativas de atención al cliente",
     dependencies=[Depends(verify_api_key)]
 )
 def get_metrics() -> Dict[str, Any]:
     """
-    Returns detailed system analytics:
-    - Total queries processed.
-    - Queries served from cache (cache hit rate).
-    - Queries escalated to human support via WhatsApp (escalation rate).
-    - Estimated token consumption and cost ($ USD).
+    Retorna analítica detallada del sistema:
+    - Total de consultas procesadas.
+    - Consultas atendidas desde la caché (cache hit rate).
+    - Consultas escaladas a asesor por WhatsApp (escalation rate).
+    - Tokens estimados consumidos y costo estimado ($ USD).
     """
     return metrics_service.get_metrics_summary()

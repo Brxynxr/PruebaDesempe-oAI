@@ -7,13 +7,13 @@ from app.core.config import settings
 
 router = APIRouter()
 
-# RAG service singleton instance
+# Instancia del servicio RAG
 rag_service = RAGService()
 
 @router.post(
     "/chat", 
     response_model=ChatResponse, 
-    summary="Process customer inquiry with RAG, Groq, and 4 security layers"
+    summary="Procesar consulta con RAG, Groq y 4 capas de seguridad"
 )
 @limiter.limit(settings.RATE_LIMIT_PER_MINUTE)
 def handle_chat_message(
@@ -22,16 +22,16 @@ def handle_chat_message(
     api_key: str = Depends(verify_api_key)
 ) -> ChatResponse:
     """
-    Main chat endpoint protected with 4 security layers:
-    1. Per-IP Rate Limiting (10 req/min via SlowAPI)
-    2. Header Authentication (X-API-Key requirement)
-    3. Anti Prompt-Injection Guardrails (Jailbreak pattern filter)
-    4. Secure Environment Secret Management (.env)
+    Endpoint principal de chat protegido con 4 niveles de seguridad:
+    1. Rate limiting por IP (10 req/min via SlowAPI)
+    2. Autenticación por header X-API-Key
+    3. Validación Anti-Prompt Injection (bloqueo de patrones de jailbreak)
+    4. Gestión segura de secretos mediante archivo .env
     """
-    # Validate incoming message against Prompt Injection threats
+    # Validar el mensaje de entrada frente a Prompt Injections
     validate_prompt_injection(payload.message)
     
-    # Process query through RAG pipeline and Groq synthesis
+    # Procesar la consulta con RAG y Groq
     return rag_service.generate_response(
         user_message=payload.message,
         session_id=payload.session_id
