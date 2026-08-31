@@ -1,7 +1,32 @@
+import os
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.api.v1.router import api_v1_router
+from app.services.ingestion_service import IngestionService
+from app.db.vector_store import VectorStore
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    Ciclo de vida de la aplicación FastAPI.
+    Al iniciar la aplicación, se realiza la ingesta automática de los documentos del negocio
+    en ChromaDB si la colección no se encuentra poblada.
+    """
+    data_dir = os.path.join(os.path.dirname(__file__), "data")
+    vector_store = VectorStore(collection_name="academia_lumina_kb")
+    
+    if vector_store.count() == 0:
+        ingestion = IngestionService(data_dir=data_dir)
+        docs = ingestion.load_documents()
+        chunks = ingestion.create_chunks(docs)
+        vector_store.add_chunks(chunks)
+        print(f"[Lifespan] Base de datos vectorial poblada con {len(chunks)} fragmentos.")
+    else:
+        print(f"[Lifespan] Base de datos vectorial activa con {vector_store.count()} fragmentos.")
+    
+    yield
 
 # Inicialización de la aplicación FastAPI con metadata oficial
 app = FastAPI(
@@ -9,13 +34,14 @@ app = FastAPI(
     version=settings.VERSION,
     description="Backend modular con RAG y FastAPI para el asistente de atención al cliente de Academia Lumina.",
     docs_url="/docs",
-    redoc_url="/redoc"
+    redoc_url="/redoc",
+    lifespan=lifespan
 )
 
 # Configuración de CORS para permitir peticiones desde el frontend en React e integraciones como n8n
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # En producción se restringe a los dominios del frontend
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
