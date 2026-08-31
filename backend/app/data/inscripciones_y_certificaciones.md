@@ -1,9 +1,9 @@
-# Academia Lumina - Inscripciones, Pagos y Certificaciones
+# Academia Lumina - Inscripciones, Matrículas, Pagos y Certificaciones
 
-## Fechas de Inscripción
-Las inscripciones en Academia Lumina se habilitan dos veces al año para los inicios de semestre:
-- **Cohorte de Primer Semestre (Enero)**: Inscripciones abiertas desde el 1 de noviembre hasta el 20 de enero. Inicio de clases en febrero.
-- **Cohorte de Segundo Semestre (Julio)**: Inscripciones abiertas desde el 1 de mayo hasta el 20 de julio. Inicio de clases en agosto.
+## Fechas de Inscripción y Matrículas (¿Cuándo habilitan o abren inscripciones?)
+Las inscripciones y matrículas en Academia Lumina para modalidad presencial y virtual se habilitan dos veces al año para los inicios de semestre:
+- **Cohorte de Primer Semestre (Enero)**: Inscripciones habilitadas y abiertas desde el 1 de noviembre hasta el 20 de enero. Inicio de clases en febrero.
+- **Cohorte de Segundo Semestre (Julio)**: Inscripciones habilitadas y abiertas desde el 1 de mayo hasta el 20 de julio. Inicio de clases en agosto.
 
 ## Proceso de Inscripción y Métodos de Pago
 El proceso de inscripción se realiza 100% en línea siguiendo estos pasos:

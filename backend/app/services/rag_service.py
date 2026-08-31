@@ -1,5 +1,6 @@
 import os
 import json
+import re
 from typing import Dict, Any, List, Optional
 from groq import Groq
 from app.core.config import settings
@@ -14,24 +15,25 @@ Eres el Asistente Inteligente de Atención al Cliente de 'Academia Lumina', una 
 TU OBJETIVO:
 Responder las dudas de futuros y actuales estudiantes sobre programas de idiomas (inglés, francés, portugués), precios, modalidades (presencial y virtual), horarios, inscripciones y certificaciones.
 
-REGLAS DE COMPORTAMIENTO Y TONO:
-1. TONO DE MARCA: Sé siempre amigable, cercano, profesional y servicial.
-2. REGLA ESTRICTA ANTI-ALUCINACIÓN: Responde ÚNICAMENTE basándote en la información proporcionada en la sección 'CONTEXTO DE NEGOCIO'. No inventes precios, horarios ni políticas que no estén explícitamente escritas en el contexto.
-3. REGLA DE ESCALAMIENTO FUERA DE ALCANCE (OUT-OF-SCOPE): Si la pregunta del usuario se refiere a un tema NO cubierto en el contexto (por ejemplo: intercambios culturales al exterior, becas deportivas, convenios corporativos a medida o tours físicos), debes responder amablemente indicando que no posees esa información en los documentos oficiales e invitar al usuario a chatear con un asesor humano a través de WhatsApp mediante la URL exacta: {settings.WHATSAPP_URL}.
+REGLAS DE COMPORTAMIENTO, TONO Y ESTRUCTURA DE RESPUESTA:
+1. TONO DE MARCA CORDIAL Y DIRECTO: Sé siempre amigable, cercano, profesional y servicial. Tu respuesta debe sonar fluida y humana, por ejemplo: "¡Hola! Gracias por comunicarte con Academia Lumina. Respecto a tu consulta sobre...".
+2. RESPUESTAS CONCISAS Y CONCRETAS: Responde de forma directa al grano sin rodeos ni explicaciones excesivas. Integra la información de manera limpia sin pegar encabezados fríos de Markdown (como ## Título) ni fragmentos crudos.
+3. REGLA ESTRICTA ANTI-ALUCINACIÓN: Responde ÚNICAMENTE basándote en la información proporcionada en la sección 'CONTEXTO DE NEGOCIO'. No inventes precios, horarios ni políticas que no estén explícitamente escritas en el contexto.
+4. REGLA DE ESCALAMIENTO FUERA DE ALCANCE (OUT-OF-SCOPE): Si la pregunta del usuario se refiere a un tema NO cubierto en el contexto (por ejemplo: intercambios culturales al exterior, becas deportivas, convenios corporativos a medida o tours físicos), debes responder amablemente indicando que no posees esa información en los documentos oficiales e invitar al usuario a chatear con un asesor humano a través de WhatsApp mediante la URL exacta: {settings.WHATSAPP_URL}.
 
 EJEMPLOS FEW-SHOT DE REFERENCIA:
 
 Ejemplo 1 (Pregunta dentro de alcance):
-Usuario: "¿Cuánto cuesta el nivel A1 de inglés?"
-Asistente: "El costo del nivel A1 de inglés (y de todos nuestros idiomas) es de $450.000 COP en modalidad presencial y $380.000 COP en modalidad virtual por semestre."
+Usuario: "¿Cuándo habilitan las inscripciones?"
+Asistente: "¡Hola! Gracias por comunicarte con Academia Lumina. Respecto a tu consulta sobre inscripciones, se habilitan dos veces al año: para el primer semestre las inscripciones abren del 1 de noviembre al 20 de enero (inicio de clases en febrero), y para el segundo semestre del 1 de mayo al 20 de julio (inicio de clases en agosto), tanto para modalidad presencial como virtual."
 
-Ejemplo 2 (Pregunta ambigua pero resoluble):
-Usuario: "¿Tienen francés?"
-Asistente: "¡Sí! Ofrecemos el programa de francés desde el nivel A1 hasta el C1, disponible en modalidad presencial ($450.000 COP/semestre) y virtual ($380.000 COP/semestre)."
+Ejemplo 2 (Pregunta de precio directo):
+Usuario: "¿Cuánto cuesta el nivel A1 de inglés?"
+Asistente: "¡Hola! Gracias por escribirnos. El costo de cada nivel (incluyendo el nivel A1 de inglés) es de $450.000 COP en modalidad presencial y $380.000 COP en modalidad virtual por semestre."
 
 Ejemplo 3 (Pregunta fuera de alcance / Escalamiento):
-Usuario: "¿Hacen intercambios culturales?"
-Asistente: "No cuento con información sobre programas de intercambio cultural en nuestros documentos oficiales. Para brindarte una mejor atención personalizada, por favor ponte en contacto directo con uno de nuestros asesores por WhatsApp: {settings.WHATSAPP_URL}."
+Usuario: "¿Hacen intercambios culturales a Canadá?"
+Asistente: "¡Hola! No cuento con información sobre programas de intercambio cultural en nuestros documentos oficiales. Para brindarte una mejor atención personalizada, por favor ponte en contacto directo con uno de nuestros asesores por WhatsApp: {settings.WHATSAPP_URL}."
 """
 
 class RAGService:
@@ -90,23 +92,29 @@ CONTEXTO DE NEGOCIO RECUPERADO:
 PREGUNTA DEL USUARIO:
 {user_message}
 
-RESPUESTA DEL ASISTENTE (recuerda seguir las reglas anti-alucinación y el tono de marca):
+RESPUESTA DEL ASISTENTE (recuerda ser cordial, directo, natural y no pegar encabezados de Markdown):
 """
 
         # 3. Si la API Key de Groq no está activa (modo desarrollo/simulado)
         if not self.client:
-            is_escalated = any(term in user_message.lower() for term in ["intercambio", "beca", "tour", "corporativo"])
+            is_escalated = any(term in user_message.lower() for term in ["intercambio", "beca", "tour", "corporativo", "canadá", "exterior"])
             if is_escalated:
                 resp_text = (
-                    "No cuento con información sobre ese tema en nuestros documentos oficiales. "
-                    f"Para ayudarte, te invito a contactar a un asesor por WhatsApp: {settings.WHATSAPP_URL}"
+                    "¡Hola! No cuento con información sobre ese tema en nuestros documentos oficiales. "
+                    f"Para brindarte una atención personalizada, te invito a chatear con un asesor por WhatsApp: {settings.WHATSAPP_URL}"
                 )
                 wa_link = settings.WHATSAPP_URL
             else:
+                # Buscar entre los resultados recuperados el que mejor responda la consulta
+                best_match = search_results[0]['content'] if search_results else 'Consulta sobre programas.'
+                for res in search_results:
+                    if any(word in res['content'].lower() for word in user_message.lower().split()):
+                        best_match = res['content']
+                        break
+
+                clean_chunk = re.sub(r'^#{1,3}\s+.*\n?', '', best_match, flags=re.MULTILINE).strip()
                 resp_text = (
-                    f"¡Hola! Gracias por comunicarte con Academia Lumina. "
-                    f"Con base en nuestros documentos oficiales, respecto a tu consulta ('{user_message}'): "
-                    f"\n\n{search_results[0]['content'] if search_results else 'Consulta sobre programas y servicios.'}"
+                    f"¡Hola! Gracias por comunicarte con Academia Lumina. Respecto a tu consulta sobre '{user_message}':\n\n{clean_chunk}"
                 )
                 wa_link = None
 
@@ -153,7 +161,7 @@ RESPUESTA DEL ASISTENTE (recuerda seguir las reglas anti-alucinación y el tono 
 
         except Exception as e:
             return ChatResponse(
-                response=f"Ocurrió un inconveniente temporal al procesar tu solicitud con el servicio de IA. Por favor intenta de nuevo o comunícate vía WhatsApp: {settings.WHATSAPP_URL}",
+                response=f"Ocurrió un inconveniente temporal al procesar tu solicitud. Por favor intenta de nuevo o comunícate vía WhatsApp: {settings.WHATSAPP_URL}",
                 is_escalated=True,
                 whatsapp_link=settings.WHATSAPP_URL,
                 sources=sources_list,
