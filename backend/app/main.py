@@ -1,4 +1,5 @@
 import os
+import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -11,13 +12,11 @@ from app.api.v1.router import api_v1_router
 from app.services.ingestion_service import IngestionService
 from app.db.vector_store import VectorStore
 
+logger = logging.getLogger("lumina")
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """
-    Ciclo de vida de la aplicación FastAPI.
-    Al iniciar la aplicación, se realiza la ingesta automática de los documentos del negocio
-    en ChromaDB si la colección no se encuentra poblada.
-    """
+    """FastAPI application lifespan. Auto-ingests business documents into ChromaDB on startup."""
     data_dir = os.path.join(os.path.dirname(__file__), "data")
     vector_store = VectorStore(collection_name="academia_lumina_kb")
     
@@ -26,45 +25,46 @@ async def lifespan(app: FastAPI):
         docs = ingestion.load_documents()
         chunks = ingestion.create_chunks(docs)
         vector_store.add_chunks(chunks)
-        print(f"[Lifespan] Base de datos vectorial poblada con {len(chunks)} fragmentos.")
+        logger.info("Vector database populated with %d chunks.", len(chunks))
     else:
-        print(f"[Lifespan] Base de datos vectorial activa con {vector_store.count()} fragmentos.")
+        logger.info("Vector database active with %d chunks.", vector_store.count())
     
     yield
 
-# Inicialización de la aplicación FastAPI con metadata oficial
 app = FastAPI(
     title=settings.APP_NAME,
     version=settings.VERSION,
-    description="Backend modular con RAG, Groq Llama 3.3 70B y 4 protecciones de seguridad para Academia Lumina.",
+    description="Modular backend with RAG, Groq LLM and 4 security layers for Academia Lumina.",
     docs_url="/docs",
     redoc_url="/redoc",
     lifespan=lifespan
 )
 
-# Asociar el limiter de SlowAPI a la aplicación
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-# Configuración de CORS
+# CORS — restrict origins to known frontends
+allowed_origins = [
+    "http://localhost:3000",
+    "http://localhost:8000",
+    "http://127.0.0.1:3000",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Content-Type", "X-API-Key"],
 )
 
-# Inclusión del router principal de API v1
 app.include_router(api_v1_router, prefix="/api/v1")
 
-@app.get("/", summary="Ruta raíz de bienvenida")
+@app.get("/", summary="Root welcome route")
 def root():
-    """
-    Ruta raíz para comprobación rápida de funcionamiento.
-    """
+    """Root route for quick health check."""
     return {
-        "message": f"Bienvenido a la API de {settings.APP_NAME}",
+        "message": f"Welcome to the {settings.APP_NAME} API",
         "docs": "/docs",
         "health": "/api/v1/health"
     }
