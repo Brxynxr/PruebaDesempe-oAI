@@ -2,7 +2,11 @@ import os
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+
 from app.core.config import settings
+from app.core.security import limiter
 from app.api.v1.router import api_v1_router
 from app.services.ingestion_service import IngestionService
 from app.db.vector_store import VectorStore
@@ -32,13 +36,17 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title=settings.APP_NAME,
     version=settings.VERSION,
-    description="Backend modular con RAG y FastAPI para el asistente de atención al cliente de Academia Lumina.",
+    description="Backend modular con RAG, FastAPI y 4 protecciones de seguridad para Academia Lumina.",
     docs_url="/docs",
     redoc_url="/redoc",
     lifespan=lifespan
 )
 
-# Configuración de CORS para permitir peticiones desde el frontend en React e integraciones como n8n
+# Asociar el limiter de SlowAPI a la aplicación
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# Configuración de CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],

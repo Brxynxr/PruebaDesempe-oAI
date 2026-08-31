@@ -31,11 +31,12 @@ def test_chat_api_endpoint():
     """
     Prueba de integración del endpoint POST /api/v1/chat.
     """
+    headers = {"X-API-Key": settings.BACKEND_API_KEY}
     payload = {
         "message": "¿Tienen clases de francés en modalidad virtual?",
         "session_id": "test_session_123"
     }
-    res = client.post("/api/v1/chat", json=payload)
+    res = client.post("/api/v1/chat", json=payload, headers=headers)
     assert res.status_code == 200
     data = res.json()
     assert "response" in data
