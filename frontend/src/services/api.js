@@ -1,7 +1,11 @@
 // Service helper para interactuar con la API backend de FastAPI
 
-const API_BASE_URL = 'http://localhost:8000/api/v1';
-const API_KEY = 'lumina_secret_key_2026'; // Coincide con BACKEND_API_KEY en .env
+// In production (e.g. Render), VITE_BACKEND_URL is provided via environment variables.
+const API_BASE_URL = import.meta.env.VITE_BACKEND_URL
+  ? `${import.meta.env.VITE_BACKEND_URL.replace(/\/$/, '')}/api/v1`
+  : 'http://localhost:8000/api/v1';
+
+const API_KEY = import.meta.env.VITE_BACKEND_API_KEY || 'lumina_secret_key_2026';
 
 /**
  * Envia el mensaje del usuario al endpoint /chat de FastAPI adjuntando el header de seguridad X-API-Key.

@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     GROQ_API_KEY: str = os.getenv("GROQ_API_KEY", "")
     BACKEND_API_KEY: str = os.getenv("BACKEND_API_KEY", "lumina_secret_key_2026")
     RATE_LIMIT_PER_MINUTE: str = os.getenv("RATE_LIMIT_PER_MINUTE", "10/minute")
+    ALLOWED_ORIGINS: str = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:8000,http://127.0.0.1:3000")
     
     # ChromaDB persistence directory
     CHROMA_DB_DIR: str = os.getenv("CHROMA_DB_DIR", "./chroma_data")
@@ -34,7 +35,7 @@ class Settings(BaseSettings):
     # Contact and escalation parameters
     WHATSAPP_NUMBER: str = "+57 324 783 6387"
     WHATSAPP_URL: str = "https://wa.me/573247836387"
-    ESCALATION_EMAIL: str = "bmegami7@gmail.com"
+    ESCALATION_EMAIL: str = os.getenv("ESCALATION_EMAIL", "bmegami7@gmail.com")
 
     # SMTP Server configuration for sending real emails
     SMTP_HOST: str = os.getenv("SMTP_HOST", "smtp.gmail.com")
