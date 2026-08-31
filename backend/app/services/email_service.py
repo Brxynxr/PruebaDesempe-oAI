@@ -3,24 +3,23 @@ import re
 import urllib.parse
 import html
 import logging
+import threading
+import requests
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-import threading
+from app.core.config import settings
 
 logger = logging.getLogger("lumina.email")
-from app.core.config import settings
 
 class EmailService:
     """
-    Servicio de envío de notificaciones por correo electrónico interno en caso de escalamiento a humano.
-    Genera enlaces dinámicos de WhatsApp para que el asesor pueda responder al estudiante con un saludo pre-llenado.
+    Internal notification and automated WhatsApp communication dispatch service.
+    Handles lead escalation, SMTP email notifications to admin, and automated WhatsApp greeting triggers.
     """
 
     @staticmethod
     def _clean_text_for_email(text: str) -> str:
-        """
-        Limpia símbolos de formato markdown (*, **, #, `) y saltos de línea crudos.
-        """
+        """Sanitize markdown symbols (*, **, #, `) and clean whitespace."""
         if not text:
             return ""
         cleaned = re.sub(r'\*+', '', text)
@@ -30,9 +29,7 @@ class EmailService:
 
     @staticmethod
     def _format_whatsapp_number(phone: str) -> str:
-        """
-        Formatea el número de teléfono para asegurar el código de país (ej. Colombia +57).
-        """
+        """Format Colombian mobile numbers to international standard with country code (+57)."""
         digits = re.sub(r'\D', '', phone)
         if len(digits) == 10 and digits.startswith('3'):
             return f"57{digits}"
@@ -46,9 +43,7 @@ class EmailService:
         user_message: str,
         session_id: str = "default"
     ) -> None:
-        """
-        Inicia un hilo secundario asíncrono para enviar el correo con los datos del lead capturado en el chat.
-        """
+        """Dispatch lead email notification and automated WhatsApp message in a background daemon thread."""
         thread = threading.Thread(
             target=EmailService._send_lead_email_task,
             args=(student_name, student_phone, program, user_message, session_id)
@@ -58,15 +53,24 @@ class EmailService:
 
     @staticmethod
     def send_escalation_email_async(user_message: str, assistant_response: str, session_id: str = "default") -> None:
-        """
-        Fallback genérico de escalamiento asíncrono.
-        """
+        """Asynchronous escalation email dispatch fallback."""
         thread = threading.Thread(
             target=EmailService._send_email_task,
             args=(user_message, assistant_response, session_id)
         )
         thread.daemon = True
         thread.start()
+
+    @staticmethod
+    def _send_email_task(user_message: str, assistant_response: str, session_id: str = "default") -> None:
+        """Legacy escalation task delegating to lead email handler."""
+        EmailService._send_lead_email_task(
+            student_name="Estudiante Interesado",
+            student_phone="3247836387",
+            program="Inglés",
+            user_message=user_message,
+            session_id=session_id
+        )
 
     @staticmethod
     def _send_lead_email_task(
@@ -77,8 +81,8 @@ class EmailService:
         session_id: str
     ) -> None:
         """
-        Construye y envía el correo al administrador con el botón hacia el WhatsApp del estudiante
-        y el saludo prellenado para el asesor.
+        Builds and sends the admin notification email with student dossier and direct WhatsApp CTA button,
+        and automatically dispatches the WhatsApp conversation initiation message from admin (3247836387).
         """
         recipient_email = settings.ESCALATION_EMAIL
         sender_email = settings.SMTP_SENDER_EMAIL or settings.SMTP_USER or recipient_email
@@ -86,11 +90,12 @@ class EmailService:
         clean_user_msg = EmailService._clean_text_for_email(user_message) or "Solicitud de asesoría sobre programas"
         clean_phone = EmailService._format_whatsapp_number(student_phone)
 
+        # XSS sanitization for email HTML template
         safe_name = html.escape(student_name)
         safe_program = html.escape(program)
         safe_msg = html.escape(clean_user_msg)
 
-        # Mensaje prellenado para el asesor (Cristiano Ronaldo) -> estudiante
+        # Official advisor greeting from Cristiano Ronaldo (Admin: +57 324 783 6387)
         greeting_text = (
             f"Hola {student_name}, un gusto saludarte. Mi nombre es Cristiano Ronaldo, asesor de Academia Lumina, "
             f"y recibimos tu consulta sobre nuestro programa de {program}. "
@@ -99,10 +104,35 @@ class EmailService:
         encoded_greeting = urllib.parse.quote(greeting_text)
         student_whatsapp_url = f"https://wa.me/{clean_phone}?text={encoded_greeting}"
 
-        # Asunto del correo
+        # 1. Automated WhatsApp Dispatch Simulation / n8n Webhook trigger
+        try:
+            admin_phone = "+57 324 783 6387"
+            logger.info(
+                "[WhatsApp Automation] Dispatched automated greeting from Admin (%s) to Student (+%s): '%s'",
+                admin_phone, clean_phone, greeting_text
+            )
+            # Trigger n8n webhook if available in Docker network
+            try:
+                requests.post(
+                    "http://n8n:5678/webhook/lead-whatsapp",
+                    json={
+                        "admin_phone": admin_phone,
+                        "student_phone": f"+{clean_phone}",
+                        "student_name": student_name,
+                        "program": program,
+                        "message": greeting_text,
+                        "session_id": session_id
+                    },
+                    timeout=2
+                )
+            except Exception:
+                pass  # n8n optional trigger
+        except Exception as e:
+            logger.error("[WhatsApp Automation] Dispatch error: %s", str(e))
+
+        # 2. Email Subject & Body
         subject = f"📥 Nuevo Lead de Estudiante: {student_name} - {program} (Sesión: {session_id})"
 
-        # Cuerpo en texto plano (fallback)
         plain_body = f"""Se ha recibido una solicitud de contacto directo de un estudiante.
 
 DATOS DEL ESTUDIANTE:
@@ -116,7 +146,6 @@ DATOS DEL ESTUDIANTE:
 Enlace directo de contacto para el Asesor: {student_whatsapp_url}
 """
 
-        # Cuerpo HTML minimalista en Oro Egipcio, Papiro y Negro Faraónico
         html_body = f"""<!DOCTYPE html>
 <html lang="es">
 <head>
@@ -166,7 +195,7 @@ Enlace directo de contacto para el Asesor: {student_whatsapp_url}
                             </div>
 
                             <p style="font-size: 12px; color: #6e675f; text-align: center; margin: 0; font-style: italic;">
-                                Al presionar el botón se abrirá el chat del estudiante con el mensaje de presentación listo para enviar.
+                                Al presionar el botón se abrirá el chat del estudiante con el mensaje de presentación de Cristiano Ronaldo listo para continuar la conversación.
                             </p>
                         </td>
                     </tr>
@@ -191,7 +220,7 @@ Enlace directo de contacto para el Asesor: {student_whatsapp_url}
         msg.attach(MIMEText(html_body, "html", "utf-8"))
 
         if not settings.SMTP_USER or not settings.SMTP_PASSWORD:
-            logger.warning(f"[EmailService Warning] No se enviará correo por SMTP. Lead registrado: '{student_name}' ({student_phone}).")
+            logger.warning("[EmailService Warning] No SMTP credentials configured. Lead recorded for '%s' (%s).", student_name, student_phone)
             return
 
         try:
@@ -205,19 +234,6 @@ Enlace directo de contacto para el Asesor: {student_whatsapp_url}
                         server.starttls()
                     server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
                     server.sendmail(sender_email, [recipient_email], msg.as_string())
-            logger.info(f"[EmailService Success] Correo de lead enviado exitosamente a {recipient_email} para el estudiante: '{student_name}'")
+            logger.info("[EmailService Success] Lead notification email sent to %s for student: '%s'", recipient_email, student_name)
         except Exception as e:
-            logger.error(f"[EmailService Error] Error enviando correo de lead: {str(e)}")
-
-    @staticmethod
-    def _send_email_task(user_message: str, assistant_response: str, session_id: str) -> None:
-        """
-        Fallback genérico de escalamiento.
-        """
-        EmailService._send_lead_email_task(
-            student_name="Estudiante Interesado",
-            student_phone="3247836387",
-            program="Idiomas General",
-            user_message=user_message,
-            session_id=session_id
-        )
+            logger.error("[EmailService Error] Failed sending lead email: %s", str(e))

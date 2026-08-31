@@ -3,33 +3,43 @@ from typing import Optional, List, Dict, Any
 
 class ChatRequest(BaseModel):
     """
-    Esquema de solicitud de consulta por parte del usuario o del flujo de n8n.
+    Schema for user query or n8n flow request.
     """
-    message: str = Field(..., min_length=1, description="Mensaje o pregunta del usuario")
-    session_id: Optional[str] = Field(default="default", description="Identificador único de sesión para seguimiento")
+    message: str = Field(..., min_length=1, description="User message or question")
+    session_id: Optional[str] = Field(default="default", description="Unique session identifier for tracking")
+
+class LeadRequest(BaseModel):
+    """
+    Schema for registering student lead data.
+    """
+    name: str = Field(..., min_length=2, description="Student name")
+    phone: str = Field(..., min_length=7, description="Student WhatsApp/phone number")
+    program: Optional[str] = Field(default="Inglés", description="Program of interest (English, French, Portuguese)")
+    user_message: Optional[str] = Field(default="", description="Original query from the student")
+    session_id: Optional[str] = Field(default="default", description="Session ID")
 
 class SourceDocument(BaseModel):
     """
-    Esquema para representar los fragmentos de documentos recuperados de la base vectorial.
+    Schema representing document chunks retrieved from the vector database.
     """
-    content: str = Field(..., description="Contenido del fragmento recuperado")
-    source: str = Field(..., description="Nombre del archivo fuente")
-    score: Optional[float] = Field(default=None, description="Puntaje de similitud semántica")
+    content: str = Field(..., description="Retrieved chunk content")
+    source: str = Field(..., description="Source file name")
+    score: Optional[float] = Field(default=None, description="Semantic similarity score")
 
 class ChatResponse(BaseModel):
     """
-    Esquema de respuesta devuelto por el servicio RAG.
+    Response schema returned by the RAG service.
     """
-    response: str = Field(..., description="Respuesta sintetizada por el LLM")
-    is_escalated: bool = Field(default=False, description="Indica si la consulta requiere escalamiento a humano")
-    whatsapp_link: Optional[str] = Field(default=None, description="Enlace directo a WhatsApp en caso de escalamiento")
-    sources: List[SourceDocument] = Field(default_factory=list, description="Fuentes consultadas en la base vectorial")
-    session_id: str = Field(..., description="ID de sesión asociado")
+    response: str = Field(..., description="Response synthesized by the LLM")
+    is_escalated: bool = Field(default=False, description="Indicates if the query requires human escalation")
+    whatsapp_link: Optional[str] = Field(default=None, description="Direct WhatsApp link in case of escalation")
+    sources: List[SourceDocument] = Field(default_factory=list, description="Sources consulted in the vector database")
+    session_id: str = Field(..., description="Associated session ID")
 
 class HealthResponse(BaseModel):
     """
-    Esquema para el estado de salud del servicio.
+    Schema for service health status.
     """
-    status: str = Field(..., description="Estado general del servicio (ok/degraded)")
-    version: str = Field(..., description="Versión actual de la aplicación")
-    environment: str = Field(..., description="Entorno de ejecución activo")
+    status: str = Field(..., description="General service status (ok/degraded)")
+    version: str = Field(..., description="Current application version")
+    environment: str = Field(..., description="Active execution environment")

@@ -1,11 +1,8 @@
 import os
-import json
 import re
 import time
 import logging
 import urllib.parse
-
-logger = logging.getLogger("lumina.rag")
 from typing import Dict, Any, List, Optional
 from groq import Groq, RateLimitError
 from app.core.config import settings
@@ -14,52 +11,86 @@ from app.db.cache import response_cache
 from app.services.metrics_service import metrics_service
 from app.schemas.chat import ChatResponse, SourceDocument
 
+logger = logging.getLogger("lumina.rag")
+
 def _build_whatsapp_link(user_message: str) -> str:
-    """
-    Construye una URL directa a WhatsApp adjuntando el parámetro ?text= pre-diligenciado con la consulta del usuario.
-    """
+    """Build a direct WhatsApp URL with pre-filled advisor consultation message."""
     base_url = settings.WHATSAPP_URL
     message_text = f"Hola, me gustaría atención personalizada con el asesor Cristiano Ronaldo de Academia Lumina. Mi consulta es: \"{user_message}\""
     encoded_text = urllib.parse.quote(message_text)
     return f"{base_url}?text={encoded_text}"
 
 def _sanitize_pii(text: str) -> str:
-    """
-    Enmascara o remueve información sensible de las respuestas (teléfonos, cédulas de ciudadanía, IDs).
-    """
+    """Mask or redact sensitive personally identifiable information (PII) from responses."""
     if not text:
         return ""
-    # 1. Enmascarar números de cédula / documento (6 a 10 dígitos) precedidos por cc/cédula/documento
-    cleaned = re.sub(r'\b(cédula|cedula|cc|documento|identificación|identificacion)\s*[:\.]?\s*[\d.\-]{6,12}\b', r'\1 [ID PROTECTED]', text, flags=re.IGNORECASE)
-    # 2. Enmascarar números de teléfono móvil de 10 dígitos o con prefijo +57
+    # Mask national identification numbers (cédula, CC, ID)
+    cleaned = re.sub(
+        r'\b(cédula|cedula|cc|documento|identificación|identificacion|id)\s*[:\.]?\s*[\d.\-]{6,12}\b',
+        r'\1 [ID PROTECTED]',
+        text,
+        flags=re.IGNORECASE
+    )
+    # Mask Colombian mobile phone numbers
     cleaned = re.sub(r'\+?57[\s.\-]?3\d{2}[\s.\-]?\d{3}[\s.\-]?\d{4}', '[PHONE PROTECTED]', cleaned)
     cleaned = re.sub(r'\b3\d{2}[\s.\-]?\d{3}[\s.\-]?\d{4}\b', '[PHONE PROTECTED]', cleaned)
     return cleaned.strip()
 
+def _is_unrelated_query(user_message: str) -> bool:
+    """Check if query is completely off-topic (math calculations, jokes, coding, unrelated general topics)."""
+    msg_lower = user_message.lower().strip()
+    
+    # Mathematical expression / arithmetic questions (e.g. "cuanto es 100 + 100", "2+2", "50 * 3")
+    math_pattern = r'(\d+\s*[\+\-\*\/xX÷]\s*\d+)|(cu[aá]nto\s+es\s+\d+)|(calcula\s+\d+)|(what\s+is\s+\d+)'
+    if re.search(math_pattern, msg_lower):
+        return True
+    
+    # Generic non-academy topics
+    off_topic_keywords = [
+        "chiste", "cuentame un chiste", "tell me a joke", "quien gano el mundial", 
+        "capital de", "clima hoy", "receta de", "hazme un codigo", "write python code"
+    ]
+    if any(k in msg_lower for k in off_topic_keywords):
+        return True
+        
+    return False
+
 def _check_strict_escalation(user_message: str, assistant_response: str) -> bool:
     """
-    Determina si una consulta debe ser escalada al formulario de asesor de forma estricta.
-    NUNCA escala si la pregunta es sobre programas disponibles, precios, modalidades u horarios
-    que están presentes en la base de conocimientos RAG.
+    Determine if a user query requires human advisor escalation.
+    Never escalates if the topic is covered in the knowledge base (programs, prices, levels, schedules, modalities)
+    or if it is completely off-topic/unrelated.
     """
     msg_lower = user_message.lower()
     resp_lower = assistant_response.lower()
 
-    # Términos explícitos que indican fuera de alcance oficial
-    out_of_scope_terms = ["intercambio", "beca", "tour", "corporativo", "canadá", "exterior", "suiza", "alemania", "visa", "francia sedes"]
-    
-    # Términos de temas que la IA SÍ debe responder directamente sin escalar
-    in_scope_terms = ["programa", "precio", "costo", "horario", "nivel", "inscripcion", "inscripción", "certific", "presencial", "virtual", "inglés", "francés", "portugués", "valor", "cuanto", "cuánto"]
+    # Off-topic or math queries should never escalate
+    if _is_unrelated_query(user_message):
+        return False
 
-    # Si la pregunta es sobre temas de negocio cubiertos en la KB, responder directamente sin escalar
+    # Topics that the bot must answer directly without escalating
+    in_scope_terms = [
+        "programa", "program", "precio", "price", "costo", "cost", "horario", "schedule", 
+        "nivel", "level", "inscripcion", "inscripción", "enrollment", "admission", 
+        "certific", "presencial", "in-person", "virtual", "online", "inglés", "english", 
+        "francés", "french", "portugués", "portuguese", "valor", "cuanto", "cuánto"
+    ]
+
+    # Explicit out-of-scope topics that require human advisor
+    out_of_scope_terms = [
+        "intercambio", "exchange", "beca", "scholarship", "tour", "corporativo", "corporate", 
+        "canadá", "canada", "exterior", "abroad", "suiza", "switzerland", "alemania", "germany", "visa"
+    ]
+
+    # If query is in-scope and not asking about out-of-scope subjects, do not escalate
     if any(term in msg_lower for term in in_scope_terms) and not any(term in msg_lower for term in out_of_scope_terms):
         return False
 
-    # Escalar SOLO si el mensaje contiene términos fuera de alcance o si el LLM explícitamente no encontró registros
+    # Escalate only if explicitly requesting an out-of-scope service or LLM explicitly lacked official records
     if any(term in msg_lower for term in out_of_scope_terms):
         return True
 
-    if "no cuento con información" in resp_lower or "registros oficiales" in resp_lower:
+    if "no cuento con información" in resp_lower or "registros oficiales" in resp_lower or "official records" in resp_lower:
         return True
 
     return False
@@ -72,38 +103,22 @@ Responder de forma clara, natural, profesional y directa las dudas de estudiante
 
 REGLAS DE COMPORTAMIENTO Y TONO DE RESPUESTA:
 1. RESPONDER CONSULTAS DE PROGRAMAS Y PRECIOS DIRECTAMENTE: Si el estudiante pregunta sobre programas disponibles, precios, niveles, inscripciones u horarios, DEBES responder la información completa directamente con los datos de la base de conocimientos. NO lo remitas a un asesor si la respuesta está en el contexto.
-2. SIN SALUDOS REPETITIVOS: NO repitas saludos largos o formales (como "¡Hola! Gracias por comunicarte con Academia Lumina...") en cada respuesta. Responde directamente a la consulta de forma natural, profesional y continua.
-3. EXPLICACIÓN CLARA Y COMPLETA: Da respuestas concretas, profesionales y bien estructuradas que resuelvan la duda totalmente sin dejar ambigüedades. No pegues títulos fríos de Markdown (como ## Título) ni números telefónicos crudos.
+2. SIN SALUDOS REPETITIVOS: NO repitas saludos largos o formales en cada respuesta. Responde directamente a la consulta de forma natural, profesional y continua.
+3. EXPLICACIÓN CLARA Y COMPLETA: Da respuestas concretas, profesionales y bien estructuradas que resuelvan la duda totalmente sin dejar ambigüedades. No pegues títulos fríos de Markdown ni números telefónicos crudos.
 4. PROTECCIÓN DE DATOS SENSIBLES (PII): Nunca imprimas cédulas, números de identificación personal o números telefónicos crudos en el texto.
 5. REGLA ESTRICTA ANTI-ALUCINACIÓN: Responde ÚNICAMENTE basándote en la información proporcionada en la sección 'CONTEXTO DE NEGOCIO'. No inventes datos no escritos en el contexto.
-6. REGLA DE ESCALAMIENTO FUERA DE ALCANCE (OUT-OF-SCOPE): ÚNICAMENTE si la pregunta se refiere a un tema NO cubierto en el contexto (por ejemplo: intercambios culturales al exterior, sedes o programas en el extranjero como Canadá, becas deportivas, convenios corporativos a medida o tours físicos), indica profesionalmente que no posees esa información e invita al usuario a diligenciar sus datos para conectarse con un asesor. Usa exactamente esta estructura profesional:
+6. PREGUNTAS NO RELACIONADAS O MATEMÁTICAS (OFF-TOPIC): Si el usuario realiza preguntas ajenas a Academia Lumina (ej: operaciones matemáticas como 'cuánto es 100 + 100', acertijos, programación o cultura general), responde amablemente que solo estás programado para responder dudas sobre los cursos e inscripciones de Academia Lumina. NO escales a asesor ni ofrezcas formulario.
+7. REGLA DE ESCALAMIENTO FUERA DE ALCANCE (OUT-OF-SCOPE): ÚNICAMENTE si la pregunta se refiere a un tema institucional NO cubierto en el contexto (por ejemplo: intercambios culturales al exterior, sedes en Canadá, becas deportivas o convenios corporativos a medida), indica profesionalmente que no posees esa información e invita al usuario a diligenciar sus datos para conectarse con un asesor:
 "No cuento con información sobre la presencia o habilitación del tema solicitado en nuestros registros oficiales. Para conectarte directamente con nuestro asesor Cristiano Ronaldo por WhatsApp, por favor completa tus datos en el formulario desplegado a continuación."
-
-EJEMPLOS FEW-SHOT DE REFERENCIA:
-
-Ejemplo 1 (Pregunta de programas y asesoría):
-Usuario: "Comunícame con un asesor para hablar sobre programas disponibles"
-Asistente: "En Academia Lumina ofrecemos tres programas principales de idiomas: 1. Programa de Inglés General y Avanzado, 2. Programa de Francés Intensivo y Estándar, y 3. Programa de Portugués de Negocios. Todos los programas cuentan con modalidades Presencial (en sede Colombia) y Virtual en vivo. ¿Sobre cuál de estos tres idiomas te gustaría consultar precios y horarios?"
-
-Ejemplo 2 (Pregunta de precio directo):
-Usuario: "¿Cuánto cuesta el nivel A1 de inglés?"
-Asistente: "El costo del nivel A1 de inglés por semestre es de $450.000 COP en modalidad presencial y $380.000 COP en modalidad virtual. Este valor incluye el acceso a la plataforma digital y los materiales en PDF."
-
-Ejemplo 3 (Pregunta fuera de alcance / Escalamiento):
-Usuario: "¿Tienen sedes o intercambios culturales a Canadá?"
-Asistente: "No cuento con información sobre la presencia o habilitación de programas en Canadá en nuestros registros oficiales. Para conectarte directamente con nuestro asesor Cristiano Ronaldo por WhatsApp, por favor completa tus datos en el formulario desplegado a continuación."
 """
 
+OFF_TOPIC_RESPONSE = "Solo estoy programado para resolver dudas sobre los programas de idiomas, precios, horarios, modalidades e inscripciones de Academia Lumina. ¿En qué te puedo colaborar respecto a nuestros cursos?"
+
 class RAGService:
-    """
-    Servicio principal de RAG que integra el VectorStore de ChromaDB,
-    el sistema de caché TTL en memoria y la API del modelo de Groq.
-    """
+    """Core RAG service integrating ChromaDB vector storage, memory TTL cache, and Groq LLM inference."""
 
     def __init__(self, vector_store: Optional[VectorStore] = None):
-        """
-        Inicializa el cliente de Groq y el almacenamiento vectorial.
-        """
+        """Initialize Groq client and ChromaDB vector store."""
         self.vector_store = vector_store or VectorStore(collection_name="academia_lumina_kb")
         self.groq_api_key = settings.GROQ_API_KEY
         self.client = None
@@ -111,11 +126,18 @@ class RAGService:
             self.client = Groq(api_key=self.groq_api_key)
 
     def generate_response(self, user_message: str, session_id: str = "default") -> ChatResponse:
-        """
-        Procesa una consulta verificando la caché, recuperando contexto vectorial 
-        y generando la respuesta con Groq.
-        """
-        # 1. Comprobar si la respuesta está en caché (Cache Hit)
+        """Process user query, check cache, retrieve vector context, and generate response via Groq."""
+        # 0. Check for off-topic / unrelated queries (e.g. math 100+100, trivia)
+        if _is_unrelated_query(user_message):
+            return ChatResponse(
+                response=OFF_TOPIC_RESPONSE,
+                is_escalated=False,
+                whatsapp_link=None,
+                sources=[],
+                session_id=session_id
+            )
+
+        # 1. Check TTL cache
         cached_resp = response_cache.get(user_message)
         if cached_resp:
             metrics_service.record_query(is_cached=True, is_escalated=cached_resp.is_escalated, tokens=0)
@@ -127,7 +149,7 @@ class RAGService:
                 session_id=session_id
             )
 
-        # 2. Búsqueda semántica en ChromaDB
+        # 2. Semantic search in ChromaDB
         search_results = self.vector_store.search(query=user_message, top_k=6)
         sources_list = [
             SourceDocument(
@@ -147,10 +169,10 @@ CONTEXTO DE NEGOCIO RECUPERADO:
 PREGUNTA DEL USUARIO:
 {user_message}
 
-RESPUESTA DEL ASISTENTE (recuerda responder directo, sin saludos repetitivos, sin números telefónicos ni cédulas y respondiendo sobre los programas si están en el contexto):
+RESPUESTA DEL ASISTENTE:
 """
 
-        # 3. Si la API Key de Groq no está activa (modo desarrollo/simulado)
+        # 3. Fallback mode if Groq API key is not configured
         if not self.client:
             is_escalated = _check_strict_escalation(user_message, "")
             if is_escalated:
@@ -182,7 +204,7 @@ RESPUESTA DEL ASISTENTE (recuerda responder directo, sin saludos repetitivos, si
             metrics_service.record_query(is_cached=False, is_escalated=is_escalated, tokens=150)
             return chat_response
 
-        # 4. Invocación a Groq con reintento automático si hay RateLimitError temporal
+        # 4. Invoke Groq LLM with automatic retry
         for attempt in range(2):
             try:
                 chat_completion = self.client.chat.completions.create(
@@ -211,7 +233,6 @@ RESPUESTA DEL ASISTENTE (recuerda responder directo, sin saludos repetitivos, si
 
                 response_cache.set(user_message, chat_response)
                 metrics_service.record_query(is_cached=False, is_escalated=is_escalated, tokens=350)
-
                 return chat_response
 
             except RateLimitError:
@@ -224,7 +245,7 @@ RESPUESTA DEL ASISTENTE (recuerda responder directo, sin saludos repetitivos, si
                 logger.error("Groq API error on attempt %d: %s", attempt + 1, str(e), exc_info=True)
                 break
 
-        # Fallback en caso de agotar reintentos o error de red
+        # Fallback in case of network or rate limit exhaustion
         is_escalated = _check_strict_escalation(user_message, "")
         resp_text = (
             "No cuento con información sobre la presencia o habilitación del tema solicitado en nuestros registros oficiales. "

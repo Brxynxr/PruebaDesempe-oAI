@@ -34,3 +34,31 @@ export async function sendChatMessage(message, sessionId = 'web_session_01') {
     throw error;
   }
 }
+
+/**
+ * Envía los datos del lead de estudiante (nombre, teléfono, programa) al endpoint /chat/lead de FastAPI.
+ * @param {Object} leadData - Objeto con name, phone, program, user_message, session_id
+ * @returns {Promise<Object>} Respuesta estructurada del backend
+ */
+export async function sendLeadInfo(leadData) {
+  try {
+    const response = await fetch(`${API_BASE_URL}/chat/lead`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-API-Key': API_KEY
+      },
+      body: JSON.stringify(leadData)
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.detail || `Error HTTP ${response.status}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error enviando lead:', error);
+    throw error;
+  }
+}

@@ -1,19 +1,20 @@
 from fastapi import APIRouter, Depends, Request
-from app.schemas.chat import ChatRequest, ChatResponse
+from app.schemas.chat import ChatRequest, ChatResponse, LeadRequest
 from app.services.rag_service import RAGService
+from app.services.email_service import EmailService
 from app.core.security import verify_api_key, limiter
 from app.core.guardrails import validate_prompt_injection
 from app.core.config import settings
 
 router = APIRouter()
 
-# Instancia del servicio RAG
+# RAG service instance
 rag_service = RAGService()
 
 @router.post(
     "/chat", 
     response_model=ChatResponse, 
-    summary="Procesar consulta con RAG, Groq y 4 capas de seguridad"
+    summary="Process query with RAG, Groq and 4 security layers"
 )
 @limiter.limit(settings.RATE_LIMIT_PER_MINUTE)
 def handle_chat_message(
@@ -22,17 +23,38 @@ def handle_chat_message(
     api_key: str = Depends(verify_api_key)
 ) -> ChatResponse:
     """
-    Endpoint principal de chat protegido con 4 niveles de seguridad:
-    1. Rate limiting por IP (10 req/min via SlowAPI)
-    2. Autenticación por header X-API-Key
-    3. Validación Anti-Prompt Injection (bloqueo de patrones de jailbreak)
-    4. Gestión segura de secretos mediante archivo .env
+    Main chat endpoint protected with 4 security levels.
     """
-    # Validar el mensaje de entrada frente a Prompt Injections
+    # Validate incoming message against Prompt Injections
     validate_prompt_injection(payload.message)
     
-    # Procesar la consulta con RAG y Groq
+    # Process the query with RAG and Groq
     return rag_service.generate_response(
         user_message=payload.message,
         session_id=payload.session_id
     )
+
+@router.post(
+    "/chat/lead",
+    summary="Register student lead and notify advisor via email with direct WhatsApp link"
+)
+@limiter.limit(settings.RATE_LIMIT_PER_MINUTE)
+def handle_lead_submission(
+    request: Request,
+    payload: LeadRequest,
+    api_key: str = Depends(verify_api_key)
+):
+    """
+    Endpoint to capture student contact data when personalized attention is required.
+    """
+    EmailService.send_lead_email_async(
+        student_name=payload.name,
+        student_phone=payload.phone,
+        program=payload.program,
+        user_message=payload.user_message,
+        session_id=payload.session_id
+    )
+    return {
+        "status": "success",
+        "message": f"Thank you {payload.name}! Your details have been sent to an Academia Lumina advisor. We will contact you via WhatsApp shortly."
+    }

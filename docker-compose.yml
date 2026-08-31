@@ -14,6 +14,7 @@ services:
       - ./backend/.env
     volumes:
       - chroma_data:/app/chroma_data
+      - chroma_cache:/root/.cache
     networks:
       - lumina_network
 
@@ -58,4 +59,5 @@ networks:
 
 volumes:
   chroma_data:
+  chroma_cache:
   n8n_data:

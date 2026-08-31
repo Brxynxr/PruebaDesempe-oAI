@@ -24,7 +24,8 @@ def test_rag_service_out_of_scope_query():
     response = service.generate_response(user_message="¿Tienen programas de intercambio cultural a Canadá?")
     
     assert response.is_escalated is True
-    assert response.whatsapp_link == settings.WHATSAPP_URL
+    assert settings.WHATSAPP_URL in response.whatsapp_link
+    assert "text=" in response.whatsapp_link
     assert "WhatsApp" in response.response or "asesores" in response.response
 
 def test_chat_api_endpoint():

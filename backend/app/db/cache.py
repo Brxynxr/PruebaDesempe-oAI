@@ -4,29 +4,29 @@ from app.schemas.chat import ChatResponse
 
 class ResponseCache:
     """
-    Caché en memoria con tiempo de vida (TTL) para almacenar y servir 
-    respuestas a preguntas frecuentes, reduciendo la latencia a ~1ms y optimizando costos.
+    In-memory cache with Time-To-Live (TTL) to store and serve
+    responses to frequently asked questions, reducing latency to ~1ms and optimizing costs.
     """
 
     def __init__(self, ttl_seconds: int = 3600):
         """
-        Inicializa el almacén de caché.
-        :param ttl_seconds: Tiempo de expiración de cada entrada en segundos (defecto: 1 hora).
+        Initializes the cache store.
+        :param ttl_seconds: Expiration time for each entry in seconds (default: 1 hour).
         """
         self.ttl_seconds = ttl_seconds
         self._cache: Dict[str, Dict[str, Any]] = {}
 
     def _normalize_key(self, query: str) -> str:
         """
-        Normaliza la clave de consulta eliminando espacios extra y convirtiendo a minúsculas.
+        Normalizes the query key by removing extra spaces and converting to lowercase.
         """
         return " ".join(query.lower().strip().split())
 
     def get(self, query: str) -> Optional[ChatResponse]:
         """
-        Obtiene la respuesta almacenada en caché si existe y no ha expirado.
-        :param query: Pregunta del usuario.
-        :return: Objeto ChatResponse o None si es un cache miss.
+        Gets the cached response if it exists and has not expired.
+        :param query: User's question.
+        :return: ChatResponse object or None if it's a cache miss.
         """
         key = self._normalize_key(query)
         entry = self._cache.get(key)
@@ -34,7 +34,7 @@ class ResponseCache:
         if not entry:
             return None
 
-        # Verificar si la entrada expiró
+        # Check if the entry has expired
         if time.time() - entry["timestamp"] > self.ttl_seconds:
             del self._cache[key]
             return None
@@ -43,9 +43,9 @@ class ResponseCache:
 
     def set(self, query: str, response: ChatResponse) -> None:
         """
-        Guarda la respuesta generada en el almacén de caché.
-        :param query: Pregunta del usuario.
-        :param response: Respuesta del RAG/LLM.
+        Saves the generated response in the cache store.
+        :param query: User's question.
+        :param response: RAG/LLM response.
         """
         key = self._normalize_key(query)
         self._cache[key] = {
@@ -55,9 +55,9 @@ class ResponseCache:
 
     def clear(self) -> None:
         """
-        Limpia completamente la caché.
+        Completely clears the cache.
         """
         self._cache.clear()
 
-# Instancia global reutilizable de caché en memoria
+# Global reusable in-memory cache instance
 response_cache = ResponseCache(ttl_seconds=3600)

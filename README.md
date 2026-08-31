@@ -53,7 +53,7 @@ docker compose up -d --build
 ### URLs de los Servicios al Containerizar:
 - 🌐 **Frontend Web (React + Nginx)**: [http://localhost:3000](http://localhost:3000)
 - ⚡ **Backend FastAPI (RAG + Swagger Docs)**: [http://localhost:8000/docs](http://localhost:8000/docs)
-- 🔴 **n8n Local (Workflow Conectado)**: [http://localhost:5678](http://localhost:5678)
+- 🔴 **n8n Local (Workflow Conectado)**: [http://localhost:|](http://localhost:5678)
 
 > **Nota**: En la red interna de Docker, n8n se comunica directamente con el backend mediante `http://backend:8000/api/v1/chat` sin requerir ngrok ni túneles externos.
 
@@ -105,7 +105,7 @@ Acceder en el navegador a `http://localhost:3000`.
 │   │   ├── db/               # VectorStore (ChromaDB) y Cache TTL
 │   │   ├── schemas/          # Modelos Pydantic
 │   │   └── services/         # RAGService, IngestionService, EmailService, MetricsService
-│   ├── tests/                # Suite de 13 pruebas automatizadas con Pytest
+│   ├── tests/                # Suite de 16 pruebas automatizadas con Pytest
 │   ├── Dockerfile            # Configuración Docker del Backend
 │   └── requirements.txt      # Dependencias Python
 ├── frontend/                 # Aplicación Web React con Vite y Tailwind
