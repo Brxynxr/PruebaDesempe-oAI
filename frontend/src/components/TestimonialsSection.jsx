@@ -30,7 +30,7 @@ export default function TestimonialsSection() {
   ];
 
   return (
-    <section className="testimonials-section">
+    <section className="section-container testimonials-section">
       <div className="section-header text-center">
         <h2 className="section-title">{t('testimonialsTitle')}</h2>
         <p className="section-subtitle">

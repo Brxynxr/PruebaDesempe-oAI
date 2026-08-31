@@ -76,7 +76,7 @@ export default function ProgramsSection({ onOpenChat }) {
     : programs.filter((p) => p.id === activeFilter);
 
   return (
-    <section id="programas" className="programs-section">
+    <section id="programas" className="section-container programs-section">
       <div className="section-header text-center">
         <h2 className="section-title">{t('programsTitle')}</h2>
         <p className="section-subtitle">

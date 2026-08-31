@@ -34,7 +34,7 @@ export default function HowItWorksSection() {
   ];
 
   return (
-    <section id="metodologia" className="how-it-works-section">
+    <section id="metodologia" className="section-container how-it-works-section">
       <div className="section-header text-center">
         <h2 className="section-title">{t('howItWorksTitle')}</h2>
         <p className="section-subtitle">

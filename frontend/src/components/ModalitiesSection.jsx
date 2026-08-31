@@ -14,7 +14,7 @@ export default function ModalitiesSection() {
   };
 
   return (
-    <section id="modalidades" className="modalities-section">
+    <section id="modalidades" className="section-container modalities-section">
       <div className="section-header text-center">
         <h2 className="section-title">{t('modalitiesTitle')}</h2>
         <p className="section-subtitle">

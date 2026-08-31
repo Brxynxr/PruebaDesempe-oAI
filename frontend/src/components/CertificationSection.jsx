@@ -6,7 +6,7 @@ export default function CertificationSection() {
   const { t } = useLanguage();
 
   return (
-    <section id="certificacion" className="certification-section">
+    <section id="certificacion" className="section-container certification-section">
       <div className="certification-card">
         <div className="certification-content">
           <div className="cert-badge">

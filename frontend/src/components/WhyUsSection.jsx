@@ -35,7 +35,7 @@ export default function WhyUsSection() {
   ];
 
   return (
-    <section className="why-us-section">
+    <section className="section-container why-us-section">
       <div className="section-header text-center">
         <h2 className="section-title">{t('whyUsTitle')}</h2>
         <p className="section-subtitle">

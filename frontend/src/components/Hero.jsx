@@ -6,63 +6,73 @@ export default function Hero({ onOpenChat }) {
   const { t } = useLanguage();
 
   return (
-    <section className="hero-section">
-      <div className="hero-grid">
+    <section className="hero-egyptian">
+      <div className="hero-container">
         <div className="hero-content">
-          <div className="badge">
+          <div className="egyptian-badge">
             <Sparkles size={14} className="badge-icon" />
             <span>{t('heroBadge')}</span>
           </div>
           
-          <h1 className="hero-title">
+          <h1 className="hero-main-title">
             {t('heroTitle')}
           </h1>
           
-          <p className="hero-subtitle">
+          <p className="hero-main-desc">
             {t('heroSubtitle')}
           </p>
 
-          <div className="hero-actions">
-            <button className="btn-primary" onClick={onOpenChat}>
+          <div className="hero-actions" style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+            <button className="btn-egyptian-gold" onClick={onOpenChat}>
               <span>{t('heroCtaChat')}</span>
               <ArrowRight size={18} />
             </button>
-            <a href="#programas" className="btn-secondary">
+            <a 
+              href="#programas" 
+              className="btn-secondary"
+              style={{
+                background: 'transparent',
+                border: '1px solid var(--papyrus-border)',
+                color: 'var(--text-dark)',
+                padding: '0.7rem 1.5rem',
+                borderRadius: '9999px',
+                fontWeight: 700,
+                textDecoration: 'none',
+                display: 'inline-flex',
+                alignItems: 'center'
+              }}
+            >
               {t('heroCtaPrograms')}
             </a>
           </div>
 
-          <div className="hero-stats">
-            <div className="stat-card">
-              <div className="stat-number">1,200+</div>
-              <div className="stat-label">{t('heroStat1')}</div>
+          <div className="hero-features-chips">
+            <div className="chip">
+              <Users size={16} className="gold-icon" />
+              <span>1,200+ {t('heroStat1')}</span>
             </div>
-            <div className="stat-card">
-              <div className="stat-number">98%</div>
-              <div className="stat-label">{t('heroStat2')}</div>
+            <div className="chip">
+              <CheckCircle2 size={16} className="gold-icon" />
+              <span>98% {t('heroStat2')}</span>
             </div>
-            <div className="stat-card">
-              <div className="stat-number">A1 - C1</div>
-              <div className="stat-label">{t('heroStat3')}</div>
+            <div className="chip">
+              <Award size={16} className="gold-icon" />
+              <span>A1 - C1 {t('heroStat3')}</span>
             </div>
           </div>
         </div>
 
         <div className="hero-image-wrapper">
-          <div className="hero-image-container">
+          <div className="image-frame-gold">
             <img 
               src="/images/hero_students.jpg" 
               alt="Academia Lumina Language Students" 
-              className="hero-main-img"
+              className="hero-students-img"
               loading="lazy"
             />
-            <div className="hero-floating-badge badge-top-right">
-              <Award size={18} className="gold-icon" />
-              <span>MCER / CEFR Certified</span>
-            </div>
-            <div className="hero-floating-badge badge-bottom-left">
-              <CheckCircle2 size={18} className="gold-icon" />
-              <span>Native Certified Faculty</span>
+            <div className="image-overlay-badge">
+              <Award size={16} className="gold-icon" />
+              <span>CEFR / MCER Certified Faculty</span>
             </div>
           </div>
         </div>
