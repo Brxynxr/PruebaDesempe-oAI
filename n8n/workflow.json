@@ -1,0 +1,157 @@
+{
+  "name": "Academia Lumina - Customer Support RAG Router & Escalation Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "chat",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ],
+      "id": "webhook-trigger",
+      "name": "Webhook - Recepción de Consulta"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:8000/api/v1/chat",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "lumina_secret_key_2026"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"message\": \"{{ $json.body.message }}\",\n  \"session_id\": \"{{ $json.body.session_id || 'n8n_session' }}\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        480,
+        300
+      ],
+      "id": "fastapi-rag-request",
+      "name": "HTTP Request - Router FastAPI RAG"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.is_escalated }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        700,
+        300
+      ],
+      "id": "if-escalated-check",
+      "name": "¿Requiere Escalamiento?"
+    },
+    {
+      "parameters": {
+        "fromEmail": "bot@academialumina.co",
+        "toEmail": "admisiones@academialumina.co",
+        "subject": "=⚠️ Alerta de Escalamiento Humano - Academia Lumina (Sesión: {{ $json.session_id }})",
+        "text": "=Se ha recibido una consulta que supera el alcance automatizado de la base de documentos oficiales.\n\nDetalles de la interacción:\n--------------------------------------------------\n- ID de Sesión: {{ $json.session_id }}\n- Respuesta entregada al usuario: {{ $json.response }}\n- Enlace WhatsApp enviado: {{ $json.whatsapp_link }}\n--------------------------------------------------\nPor favor estar atentos al canal de WhatsApp (+57 324 783 6387) para atender al estudiante.",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [
+        920,
+        200
+      ],
+      "id": "email-notification-node",
+      "name": "Notificación Correo Interno Admisiones"
+    },
+    {
+      "parameters": {
+        "options": {},
+        "respondWith": "json",
+        "responseBody": "={\n  \"response\": \"{{ $json.response }}\",\n  \"is_escalated\": {{ $json.is_escalated }},\n  \"whatsapp_link\": \"{{ $json.whatsapp_link || '' }}\",\n  \"session_id\": \"{{ $json.session_id }}\"\n}"
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        920,
+        420
+      ],
+      "id": "respond-to-webhook",
+      "name": "Respuesta al Cliente"
+    }
+  ],
+  "connections": {
+    "Webhook - Recepción de Consulta": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request - Router FastAPI RAG",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request - Router FastAPI RAG": {
+      "main": [
+        [
+          {
+            "node": "¿Requiere Escalamiento?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Requiere Escalamiento?": {
+      "main": [
+        [
+          {
+            "node": "Notificación Correo Interno Admisiones",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Respuesta al Cliente",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respuesta al Cliente",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notificación Correo Interno Admisiones": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "settings": {}
+}
