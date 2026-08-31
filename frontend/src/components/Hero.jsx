@@ -22,26 +22,12 @@ export default function Hero({ onOpenChat }) {
             {t('heroSubtitle')}
           </p>
 
-          <div className="hero-actions" style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+          <div className="hero-actions">
             <button className="btn-egyptian-gold" onClick={onOpenChat}>
               <span>{t('heroCtaChat')}</span>
               <ArrowRight size={18} />
             </button>
-            <a 
-              href="#programas" 
-              className="btn-secondary"
-              style={{
-                background: 'transparent',
-                border: '1px solid var(--papyrus-border)',
-                color: 'var(--text-dark)',
-                padding: '0.7rem 1.5rem',
-                borderRadius: '9999px',
-                fontWeight: 700,
-                textDecoration: 'none',
-                display: 'inline-flex',
-                alignItems: 'center'
-              }}
-            >
+            <a href="#programas" className="btn-secondary">
               {t('heroCtaPrograms')}
             </a>
           </div>
