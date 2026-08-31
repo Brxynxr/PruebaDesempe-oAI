@@ -1,0 +1,61 @@
+version: '3.8'
+
+services:
+  # 1. Servicio Backend en FastAPI con RAG y Groq LLM
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: lumina_backend
+    restart: always
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./backend/.env
+    volumes:
+      - chroma_data:/app/chroma_data
+    networks:
+      - lumina_network
+
+  # 2. Servicio de Automatización n8n
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: lumina_n8n
+    restart: always
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_HOST=localhost
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - NODE_ENV=production
+      - WEBHOOK_URL=http://localhost:5678/
+      - GENERIC_TIMEZONE=America/Bogota
+    volumes:
+      - n8n_data:/home/node/.n8n
+    networks:
+      - lumina_network
+    depends_on:
+      - backend
+
+  # 3. Servicio Frontend Web en React (Servido por Nginx)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: lumina_frontend
+    restart: always
+    ports:
+      - "3000:80"
+    networks:
+      - lumina_network
+    depends_on:
+      - backend
+
+networks:
+  lumina_network:
+    driver: bridge
+
+volumes:
+  chroma_data:
+  n8n_data:

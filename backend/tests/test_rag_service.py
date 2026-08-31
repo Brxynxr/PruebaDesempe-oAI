@@ -25,7 +25,7 @@ def test_rag_service_out_of_scope_query():
     
     assert response.is_escalated is True
     assert response.whatsapp_link == settings.WHATSAPP_URL
-    assert settings.WHATSAPP_URL in response.response
+    assert "WhatsApp" in response.response or "asesores" in response.response
 
 def test_chat_api_endpoint():
     """

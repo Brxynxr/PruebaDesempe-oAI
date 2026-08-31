@@ -1,4 +1,4 @@
-# Python
+# Python & Environments
 __pycache__/
 *.pyc
 *.pyo
@@ -6,6 +6,8 @@ __pycache__/
 .pytest_cache/
 backend/venv/
 backend/.env
+.env
+*.env
 backend/chroma_data/
 chroma_data/
 
@@ -13,7 +15,8 @@ chroma_data/
 node_modules/
 dist/
 .env.local
+.env.*.local
 
-# OS
+# OS & Temp
 .DS_Store
 Thumbs.db

@@ -20,7 +20,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "http://localhost:8000/api/v1/chat",
+        "url": "http://backend:8000/api/v1/chat",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -70,8 +70,8 @@
     },
     {
       "parameters": {
-        "fromEmail": "bot@academialumina.co",
-        "toEmail": "admisiones@academialumina.co",
+        "fromEmail": "breynermanga07@gmail.com",
+        "toEmail": "bmegami7@gmail.com",
         "subject": "=⚠️ Alerta de Escalamiento Humano - Academia Lumina (Sesión: {{ $json.session_id }})",
         "text": "=Se ha recibido una consulta que supera el alcance automatizado de la base de documentos oficiales.\n\nDetalles de la interacción:\n--------------------------------------------------\n- ID de Sesión: {{ $json.session_id }}\n- Respuesta entregada al usuario: {{ $json.response }}\n- Enlace WhatsApp enviado: {{ $json.whatsapp_link }}\n--------------------------------------------------\nPor favor estar atentos al canal de WhatsApp (+57 324 783 6387) para atender al estudiante.",
         "options": {}

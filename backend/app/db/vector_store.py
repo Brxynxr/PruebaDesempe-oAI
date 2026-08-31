@@ -47,11 +47,11 @@ class VectorStore:
             metadatas=metadatas
         )
 
-    def search(self, query: str, top_k: int = 4) -> List[Dict[str, Any]]:
+    def search(self, query: str, top_k: int = 6) -> List[Dict[str, Any]]:
         """
         Realiza búsqueda de k fragmentos más similares semánticamente a la consulta.
         :param query: Pregunta o texto de consulta del usuario.
-        :param top_k: Número de resultados a retornar.
+        :param top_k: Número de resultados a retornar (por defecto 6 para cubrir contexto completo).
         :return: Lista de fragmentos con texto, fuente y distancia de similitud.
         """
         results = self.collection.query(

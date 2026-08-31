@@ -3,8 +3,14 @@ from pydantic import ConfigDict
 from pydantic_settings import BaseSettings
 from dotenv import load_dotenv
 
-# Cargar variables de entorno desde el archivo .env si existe
-load_dotenv()
+# Localizar la ruta absoluta del archivo .env dentro de la carpeta backend
+base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+env_path = os.path.join(base_dir, ".env")
+
+if os.path.exists(env_path):
+    load_dotenv(dotenv_path=env_path, override=True)
+else:
+    load_dotenv(override=True)
 
 class Settings(BaseSettings):
     """
@@ -28,7 +34,7 @@ class Settings(BaseSettings):
     # Parámetros de contacto y escalamiento
     WHATSAPP_NUMBER: str = "+57 324 783 6387"
     WHATSAPP_URL: str = "https://wa.me/573247836387"
-    ESCALATION_EMAIL: str = "admisiones@academialumina.co"
+    ESCALATION_EMAIL: str = "bmegami7@gmail.com"
 
 # Instancia global reutilizable de la configuración
 settings = Settings()
