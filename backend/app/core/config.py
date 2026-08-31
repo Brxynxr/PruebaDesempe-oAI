@@ -27,8 +27,8 @@ class Settings(BaseSettings):
     CHROMA_DB_DIR: str = os.getenv("CHROMA_DB_DIR", "./chroma_data")
     
     # Datos de contacto y escalamiento
-    WHATSAPP_NUMBER: str = "+57 300 000 0000"
-    WHATSAPP_URL: str = "https://wa.me/573000000000"
+    WHATSAPP_NUMBER: str = "+57 324 783 6387"
+    WHATSAPP_URL: str = "https://wa.me/573247836387"
     ESCALATION_EMAIL: str = "admisiones@academialumina.co"
 
 

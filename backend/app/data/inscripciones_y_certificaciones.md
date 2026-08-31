@@ -22,4 +22,4 @@ Al culminar exitosamente cada nivel (A1, A2, B1, B2 o C1) con una nota mínima d
 ## Asuntos Fuera de Alcance y Escalamiento Humano
 Información no cubierta en esta documentación oficial (por ejemplo: programas de intercambio internacional en el exterior, becas deportivas, convenios corporativos a medida o tours a la sede):
 - Requieren atención personalizada directa por parte del equipo de admisiones.
-- El estudiante o interesado debe ser derivado al canal oficial de soporte vía WhatsApp (+57 300 000 0000) o correo electrónico admisiones@academialumina.co.
+- El estudiante o interesado debe ser derivado al canal oficial de soporte vía WhatsApp (+57 324 783 6387) o correo electrónico admisiones@academialumina.co.
