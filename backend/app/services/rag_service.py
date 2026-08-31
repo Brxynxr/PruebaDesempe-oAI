@@ -13,10 +13,13 @@ from app.schemas.chat import ChatResponse, SourceDocument
 
 logger = logging.getLogger("lumina.rag")
 
-def _build_whatsapp_link(user_message: str) -> str:
+def _build_whatsapp_link(user_message: str, language: str = "es") -> str:
     """Build a direct WhatsApp URL with pre-filled advisor consultation message."""
     base_url = settings.WHATSAPP_URL
-    message_text = f"Hola, me gustaría atención personalizada con el asesor Cristiano Ronaldo de Academia Lumina. Mi consulta es: \"{user_message}\""
+    if language == "en":
+        message_text = f"Hello, I would like personalized guidance from advisor Cristiano Ronaldo at Academia Lumina. My inquiry is: \"{user_message}\""
+    else:
+        message_text = f"Hola, me gustaría atención personalizada con el asesor Cristiano Ronaldo de Academia Lumina. Mi consulta es: \"{user_message}\""
     encoded_text = urllib.parse.quote(message_text)
     return f"{base_url}?text={encoded_text}"
 
@@ -24,14 +27,12 @@ def _sanitize_pii(text: str) -> str:
     """Mask or redact sensitive personally identifiable information (PII) from responses."""
     if not text:
         return ""
-    # Mask national identification numbers (cédula, CC, ID)
     cleaned = re.sub(
         r'\b(cédula|cedula|cc|documento|identificación|identificacion|id)\s*[:\.]?\s*[\d.\-]{6,12}\b',
         r'\1 [ID PROTECTED]',
         text,
         flags=re.IGNORECASE
     )
-    # Mask Colombian mobile phone numbers
     cleaned = re.sub(r'\+?57[\s.\-]?3\d{2}[\s.\-]?\d{3}[\s.\-]?\d{4}', '[PHONE PROTECTED]', cleaned)
     cleaned = re.sub(r'\b3\d{2}[\s.\-]?\d{3}[\s.\-]?\d{4}\b', '[PHONE PROTECTED]', cleaned)
     return cleaned.strip()
@@ -48,7 +49,8 @@ def _is_unrelated_query(user_message: str) -> bool:
     # Generic non-academy topics
     off_topic_keywords = [
         "chiste", "cuentame un chiste", "tell me a joke", "quien gano el mundial", 
-        "capital de", "clima hoy", "receta de", "hazme un codigo", "write python code"
+        "capital de", "clima hoy", "receta de", "hazme un codigo", "write python code",
+        "who is the president", "tell me a story"
     ]
     if any(k in msg_lower for k in off_topic_keywords):
         return True
@@ -95,24 +97,48 @@ def _check_strict_escalation(user_message: str, assistant_response: str) -> bool
 
     return False
 
-SYSTEM_PROMPT = f"""
+def _get_system_prompt(language: str = "en") -> str:
+    """Return tailored system prompt enforcing strict response language."""
+    if language == "en":
+        return """
+You are the AI Customer Support Specialist for 'Academia Lumina', an accredited language academy in Colombia.
+
+CRITICAL INSTRUCTION - LANGUAGE CONSTRAINT:
+You MUST respond EXCLUSIVELY in ENGLISH. Even though the business context is written in Spanish, translate and synthesize all information seamlessly into clear, professional, natural English.
+
+YOUR GOAL:
+Answer questions about language programs (English, French, Portuguese), pricing in COP, study modalities (In-person campus and Virtual Live), schedules, admissions, and CEFR certification.
+
+RULES:
+1. ANSWER IN ENGLISH ONLY.
+2. ANSWER DIRECTLY FROM CONTEXT: For program details, prices, schedules, and modalities, answer immediately with complete facts. DO NOT defer to an advisor if the info exists in the context.
+3. NO REPETITIVE GREETINGS: Do not repeat long formal greetings on every turn. Be concise, warm, and helpful.
+4. NO PII LEAKS: Never print raw phone numbers or national IDs.
+5. STRICT ANTI-HALLUCINATION: Use ONLY facts from the provided business context.
+6. OFF-TOPIC / UNRELATED: If the user asks non-academy questions (math, trivia, jokes, coding), politely state that you are only programmed to assist with Academia Lumina language programs.
+7. OUT-OF-SCOPE ESCALATION: ONLY if the student asks for unlisted institutional services (such as study-abroad exchange trips to Canada, sports scholarships, or customized corporate deals), respond with this exact template in English:
+"I do not have information regarding the presence or availability of this topic in our official records. To connect directly with our advisor Cristiano Ronaldo on WhatsApp, please complete your details in the form displayed below."
+"""
+    else:
+        return """
 Eres el Asistente Inteligente de Atención al Cliente de 'Academia Lumina', una reconocida academia de idiomas en Colombia.
 
-TU OBJETIVO:
-Responder de forma clara, natural, profesional y directa las dudas de estudiantes sobre programas de idiomas (inglés, francés, portugués), precios, modalidades (presencial y virtual), horarios, inscripciones y certificaciones.
+INSTRUCCIÓN CRÍTICA - IDIOMA DE RESPUESTA:
+Debes responder EXCLUSIVAMENTE en ESPAÑOL de forma clara, natural, profesional y continua.
 
-REGLAS DE COMPORTAMIENTO Y TONO DE RESPUESTA:
-1. RESPONDER CONSULTAS DE PROGRAMAS Y PRECIOS DIRECTAMENTE: Si el estudiante pregunta sobre programas disponibles, precios, niveles, inscripciones u horarios, DEBES responder la información completa directamente con los datos de la base de conocimientos. NO lo remitas a un asesor si la respuesta está en el contexto.
-2. SIN SALUDOS REPETITIVOS: NO repitas saludos largos o formales en cada respuesta. Responde directamente a la consulta de forma natural, profesional y continua.
-3. EXPLICACIÓN CLARA Y COMPLETA: Da respuestas concretas, profesionales y bien estructuradas que resuelvan la duda totalmente sin dejar ambigüedades. No pegues títulos fríos de Markdown ni números telefónicos crudos.
-4. PROTECCIÓN DE DATOS SENSIBLES (PII): Nunca imprimas cédulas, números de identificación personal o números telefónicos crudos en el texto.
-5. REGLA ESTRICTA ANTI-ALUCINACIÓN: Responde ÚNICAMENTE basándote en la información proporcionada en la sección 'CONTEXTO DE NEGOCIO'. No inventes datos no escritos en el contexto.
-6. PREGUNTAS NO RELACIONADAS O MATEMÁTICAS (OFF-TOPIC): Si el usuario realiza preguntas ajenas a Academia Lumina (ej: operaciones matemáticas como 'cuánto es 100 + 100', acertijos, programación o cultura general), responde amablemente que solo estás programado para responder dudas sobre los cursos e inscripciones de Academia Lumina. NO escales a asesor ni ofrezcas formulario.
-7. REGLA DE ESCALAMIENTO FUERA DE ALCANCE (OUT-OF-SCOPE): ÚNICAMENTE si la pregunta se refiere a un tema institucional NO cubierto en el contexto (por ejemplo: intercambios culturales al exterior, sedes en Canadá, becas deportivas o convenios corporativos a medida), indica profesionalmente que no posees esa información e invita al usuario a diligenciar sus datos para conectarse con un asesor:
+TU OBJETIVO:
+Responder dudas de estudiantes sobre programas de idiomas (inglés, francés, portugués), precios en COP, modalidades (presencial y virtual en vivo), horarios, inscripciones y certificaciones MCER.
+
+REGLAS:
+1. RESPONDE SIEMPRE EN ESPAÑOL.
+2. RESPONDER CONSULTAS DE PROGRAMAS Y PRECIOS DIRECTAMENTE: Si el estudiante pregunta sobre programas, precios, niveles, inscripciones u horarios, responde la información completa directamente con los datos de la base de conocimientos. NO lo remitas a un asesor si la respuesta está en el contexto.
+3. SIN SALUDOS REPETITIVOS: Responde directamente a la consulta de forma continua y ejecutiva.
+4. PROTECCIÓN DE DATOS SENSIBLES (PII): Nunca imprimas cédulas ni números telefónicos crudos.
+5. REGLA ESTRICTA ANTI-ALUCINACIÓN: Responde ÚNICAMENTE basándote en la información proporcionada en la sección 'CONTEXTO DE NEGOCIO'.
+6. PREGUNTAS NO RELACIONADAS O MATEMÁTICAS (OFF-TOPIC): Si el usuario realiza preguntas ajenas a Academia Lumina, responde amablemente que solo estás programado para resolver dudas sobre los cursos e inscripciones de Academia Lumina.
+7. REGLA DE ESCALAMIENTO FUERA DE ALCANCE (OUT-OF-SCOPE): ÚNICAMENTE si la pregunta se refiere a un tema NO cubierto en el contexto (por ejemplo: intercambios culturales a Canadá, becas o convenios corporativos a medida), usa exactamente esta estructura:
 "No cuento con información sobre la presencia o habilitación del tema solicitado en nuestros registros oficiales. Para conectarte directamente con nuestro asesor Cristiano Ronaldo por WhatsApp, por favor completa tus datos en el formulario desplegado a continuación."
 """
-
-OFF_TOPIC_RESPONSE = "Solo estoy programado para resolver dudas sobre los programas de idiomas, precios, horarios, modalidades e inscripciones de Academia Lumina. ¿En qué te puedo colaborar respecto a nuestros cursos?"
 
 class RAGService:
     """Core RAG service integrating ChromaDB vector storage, memory TTL cache, and Groq LLM inference."""
@@ -125,12 +151,24 @@ class RAGService:
         if self.groq_api_key and not self.groq_api_key.startswith("gsk_your"):
             self.client = Groq(api_key=self.groq_api_key)
 
-    def generate_response(self, user_message: str, session_id: str = "default") -> ChatResponse:
-        """Process user query, check cache, retrieve vector context, and generate response via Groq."""
+    def generate_response(
+        self,
+        user_message: str,
+        session_id: str = "default",
+        language: str = "en"
+    ) -> ChatResponse:
+        """Process user query, check cache, retrieve vector context, and generate response via Groq in the requested language."""
+        lang_code = "en" if language.lower().startswith("en") else "es"
+        
         # 0. Check for off-topic / unrelated queries (e.g. math 100+100, trivia)
         if _is_unrelated_query(user_message):
+            off_topic_msg = (
+                "I am only programmed to assist with questions regarding Academia Lumina's language programs, pricing, schedules, study modalities, and enrollment. How can I help you with our courses today?"
+                if lang_code == "en" else
+                "Solo estoy programado para resolver dudas sobre los programas de idiomas, precios, horarios, modalidades e inscripciones de Academia Lumina. ¿En qué te puedo colaborar respecto a nuestros cursos?"
+            )
             return ChatResponse(
-                response=OFF_TOPIC_RESPONSE,
+                response=off_topic_msg,
                 is_escalated=False,
                 whatsapp_link=None,
                 sources=[],
@@ -138,7 +176,8 @@ class RAGService:
             )
 
         # 1. Check TTL cache
-        cached_resp = response_cache.get(user_message)
+        cache_key = f"{lang_code}:{user_message}"
+        cached_resp = response_cache.get(cache_key)
         if cached_resp:
             metrics_service.record_query(is_cached=True, is_escalated=cached_resp.is_escalated, tokens=0)
             return ChatResponse(
@@ -160,16 +199,17 @@ class RAGService:
             for res in search_results
         ]
 
-        context_str = "\n\n---\n\n".join([r["content"] for r in search_results]) if search_results else "No hay contexto disponible."
+        context_str = "\n\n---\n\n".join([r["content"] for r in search_results]) if search_results else "No context available."
 
+        system_prompt = _get_system_prompt(lang_code)
         user_prompt = f"""
-CONTEXTO DE NEGOCIO RECUPERADO:
+ACADEMIC BUSINESS CONTEXT (RETRIEVED FROM OFFICIAL RECORDS):
 {context_str}
 
-PREGUNTA DEL USUARIO:
+USER QUERY:
 {user_message}
 
-RESPUESTA DEL ASISTENTE:
+ASSISTANT RESPONSE (IN {lang_code.upper()}):
 """
 
         # 3. Fallback mode if Groq API key is not configured
@@ -177,12 +217,13 @@ RESPUESTA DEL ASISTENTE:
             is_escalated = _check_strict_escalation(user_message, "")
             if is_escalated:
                 resp_text = (
-                    "No cuento con información sobre la presencia o habilitación del tema solicitado en nuestros registros oficiales. "
-                    "Para conectarte directamente con nuestro asesor Cristiano Ronaldo por WhatsApp, por favor completa tus datos en el formulario a continuación."
+                    "I do not have information regarding the presence or availability of this topic in our official records. To connect directly with our advisor Cristiano Ronaldo on WhatsApp, please complete your details in the form below."
+                    if lang_code == "en" else
+                    "No cuento con información sobre la presencia o habilitación del tema solicitado en nuestros registros oficiales. Para conectarte directamente con nuestro asesor Cristiano Ronaldo por WhatsApp, por favor completa tus datos en el formulario desplegado a continuación."
                 )
-                wa_link = _build_whatsapp_link(user_message)
+                wa_link = _build_whatsapp_link(user_message, lang_code)
             else:
-                best_match = search_results[0]['content'] if search_results else 'Consulta sobre programas.'
+                best_match = search_results[0]['content'] if search_results else 'Language programs inquiry.'
                 for res in search_results:
                     if any(word in res['content'].lower() for word in user_message.lower().split()):
                         best_match = res['content']
@@ -200,7 +241,7 @@ RESPUESTA DEL ASISTENTE:
                 session_id=session_id
             )
             
-            response_cache.set(user_message, chat_response)
+            response_cache.set(cache_key, chat_response)
             metrics_service.record_query(is_cached=False, is_escalated=is_escalated, tokens=150)
             return chat_response
 
@@ -209,7 +250,7 @@ RESPUESTA DEL ASISTENTE:
             try:
                 chat_completion = self.client.chat.completions.create(
                     messages=[
-                        {"role": "system", "content": SYSTEM_PROMPT},
+                        {"role": "system", "content": system_prompt},
                         {"role": "user", "content": user_prompt}
                     ],
                     model="openai/gpt-oss-120b",
@@ -221,7 +262,7 @@ RESPUESTA DEL ASISTENTE:
                 assistant_response = _sanitize_pii(raw_response)
                 
                 is_escalated = _check_strict_escalation(user_message, assistant_response)
-                whatsapp_link = _build_whatsapp_link(user_message) if is_escalated else None
+                whatsapp_link = _build_whatsapp_link(user_message, lang_code) if is_escalated else None
 
                 chat_response = ChatResponse(
                     response=assistant_response,
@@ -231,7 +272,7 @@ RESPUESTA DEL ASISTENTE:
                     session_id=session_id
                 )
 
-                response_cache.set(user_message, chat_response)
+                response_cache.set(cache_key, chat_response)
                 metrics_service.record_query(is_cached=False, is_escalated=is_escalated, tokens=350)
                 return chat_response
 
@@ -247,18 +288,23 @@ RESPUESTA DEL ASISTENTE:
 
         # Fallback in case of network or rate limit exhaustion
         is_escalated = _check_strict_escalation(user_message, "")
-        resp_text = (
-            "No cuento con información sobre la presencia o habilitación del tema solicitado en nuestros registros oficiales. "
-            "Para conectarte directamente con nuestro asesor Cristiano Ronaldo por WhatsApp, por favor completa tus datos en el formulario a continuación."
-        ) if is_escalated else (
-            "Ocurrió un inconveniente temporal de conexión con el servicio de IA. "
-            "Por favor intenta de nuevo o comunícate directamente con nuestro equipo de soporte."
-        )
+        if is_escalated:
+            resp_text = (
+                "I do not have information regarding the presence or availability of this topic in our official records. To connect directly with our advisor Cristiano Ronaldo on WhatsApp, please complete your details in the form below."
+                if lang_code == "en" else
+                "No cuento con información sobre la presencia o habilitación del tema solicitado en nuestros registros oficiales. Para conectarte directamente con nuestro asesor Cristiano Ronaldo por WhatsApp, por favor completa tus datos en el formulario desplegado a continuación."
+            )
+        else:
+            resp_text = (
+                "A temporary connection issue occurred with the AI service. Please try again in a few moments."
+                if lang_code == "en" else
+                "Ocurrió un inconveniente temporal de conexión con el servicio de IA. Por favor intenta de nuevo en unos momentos."
+            )
 
         return ChatResponse(
             response=_sanitize_pii(resp_text),
             is_escalated=is_escalated,
-            whatsapp_link=_build_whatsapp_link(user_message) if is_escalated else None,
+            whatsapp_link=_build_whatsapp_link(user_message, lang_code) if is_escalated else None,
             sources=sources_list,
             session_id=session_id
         )

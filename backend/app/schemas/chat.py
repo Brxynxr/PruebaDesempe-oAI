@@ -7,6 +7,7 @@ class ChatRequest(BaseModel):
     """
     message: str = Field(..., min_length=1, description="User message or question")
     session_id: Optional[str] = Field(default="default", description="Unique session identifier for tracking")
+    language: Optional[str] = Field(default="en", description="Language of response ('en' or 'es')")
 
 class LeadRequest(BaseModel):
     """
@@ -17,6 +18,7 @@ class LeadRequest(BaseModel):
     program: Optional[str] = Field(default="Inglés", description="Program of interest (English, French, Portuguese)")
     user_message: Optional[str] = Field(default="", description="Original query from the student")
     session_id: Optional[str] = Field(default="default", description="Session ID")
+    language: Optional[str] = Field(default="en", description="Language code")
 
 class SourceDocument(BaseModel):
     """

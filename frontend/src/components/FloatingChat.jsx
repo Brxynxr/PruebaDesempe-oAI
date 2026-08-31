@@ -75,7 +75,7 @@ export default function FloatingChat({ isOpen, setIsOpen }) {
     setLoading(true);
 
     try {
-      const data = await sendChatMessage(userText);
+      const data = await sendChatMessage(userText, 'web_session_01', language);
       const isEscalated = data.is_escalated;
 
       setMessages((prev) => [
@@ -131,7 +131,8 @@ export default function FloatingChat({ isOpen, setIsOpen }) {
         phone: leadPhone.trim(),
         program: leadProgram,
         user_message: activeLeadMessage || 'Consulta desde el chat web',
-        session_id: 'web_session_01'
+        session_id: 'web_session_01',
+        language: language
       });
 
       setLeadSubmitted(true);
