@@ -11,7 +11,7 @@ import CertificationSection from './components/CertificationSection';
 import TestimonialsSection from './components/TestimonialsSection';
 import Footer from './components/Footer';
 import FloatingChat from './components/FloatingChat';
-import NeuralNetworkBg from './components/NeuralNetworkBg';
+import ParticleBackground from './components/ParticleBackground';
 import './App.css';
 
 function MainAppContent() {
@@ -24,8 +24,8 @@ function MainAppContent() {
 
   return (
     <div className={`app theme-${activeTab}`}>
-      {/* Background Interactive Neural Network Canvas */}
-      <NeuralNetworkBg />
+      {/* Global Golden Particle Ambient Background (Active in both Light and Dark modes) */}
+      <ParticleBackground />
 
       {/* Persistent Navbar with SPA Tabs, Theme Toggle & Language Selector */}
       <Navbar

@@ -89,6 +89,12 @@ const translations = {
     // Testimonials
     testimonialsTitle: 'Student Success Stories',
     testimonialsSubtitle: 'Discover how Academia Lumina has transformed professional careers and language skills.',
+    testimonial1Role: 'Software Engineer • Advanced English C1',
+    testimonial1Comment: 'Thanks to Academia Lumina, I certified my C1 English level and was hired by an international tech company working remotely.',
+    testimonial2Role: 'International Relations • Intensive French B2',
+    testimonial2Comment: 'The interactive live methodology and native teachers made passing the DELF B2 exam a clear and rewarding experience.',
+    testimonial3Role: 'Foreign Trade Director • Business Portuguese B1',
+    testimonial3Comment: 'Focusing on business negotiation and accent coaching allowed me to close key partnerships in São Paulo with full confidence.',
 
     // Footer
     footerDesc: 'Leading language academy in Colombia. Excellence in English, French, and Portuguese education.',
@@ -196,6 +202,12 @@ const translations = {
     // Testimonials
     testimonialsTitle: 'Testimonios de Estudiantes',
     testimonialsSubtitle: 'Conoce cómo Academia Lumina ha impulsado el crecimiento profesional de nuestros egresados.',
+    testimonial1Role: 'Ingeniera de Software • Inglés Avanzado C1',
+    testimonial1Comment: 'Gracias a Academia Lumina logré certificar mi nivel C1 de inglés y fui contratada por una empresa internacional en modalidad remota.',
+    testimonial2Role: 'Relaciones Internacionales • Francés B2',
+    testimonial2Comment: 'La metodología interactiva y los docentes nativos hicieron que pasar el examen DELF B2 fuera una experiencia clara y estructurada.',
+    testimonial3Role: 'Directora de Comercio Exterior • Portugués B1',
+    testimonial3Comment: 'El enfoque en negociación y pronunciación me permitió cerrar alianzas comerciales directas en São Paulo con total seguridad.',
 
     // Footer
     footerDesc: 'Academia líder de idiomas en Colombia. Excelencia en la enseñanza de Inglés, Francés y Portugués.',

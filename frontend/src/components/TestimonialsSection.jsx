@@ -8,24 +8,24 @@ export default function TestimonialsSection() {
   const testimonials = [
     {
       name: 'Camila Restrepo',
-      role: 'Ingeniera de Software',
-      program: 'Inglés Avanzado B2 - C1',
+      role: t('testimonial1Role'),
+      avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=200&auto=format&fit=crop&q=80',
       rating: 5,
-      comment: 'Gracias a Academia Lumina logré certificar mi nivel C1 de inglés y fui contratada por una empresa internacional en modalidad remota.'
+      comment: t('testimonial1Comment')
     },
     {
       name: 'Sebastián Mora',
-      role: 'Estudiante de Relaciones Internacionales',
-      program: 'Francés Intensivo DELF B2',
+      role: t('testimonial2Role'),
+      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&auto=format&fit=crop&q=80',
       rating: 5,
-      comment: 'La metodología interactiva y los docentes nativos hicieron que pasar el examen DELF B2 fuera una experiencia clara y estructurada.'
+      comment: t('testimonial2Comment')
     },
     {
       name: 'Valeria Gómez',
-      role: 'Directora de Comercio Exterior',
-      program: 'Portugués de Negocios B1',
+      role: t('testimonial3Role'),
+      avatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=200&auto=format&fit=crop&q=80',
       rating: 5,
-      comment: 'El enfoque en negociación y pronunciación me permitió cerrar alianzas comerciales directas en São Paulo con total seguridad.'
+      comment: t('testimonial3Comment')
     }
   ];
 
@@ -42,22 +42,27 @@ export default function TestimonialsSection() {
         {testimonials.map((tItem, idx) => (
           <div key={idx} className="testimonial-card">
             <div className="quote-icon-box">
-              <Quote size={20} />
+              <Quote size={18} />
             </div>
             
             <div className="stars-row">
               {[...Array(tItem.rating)].map((_, i) => (
-                <Star key={i} size={14} fill="#d4af37" color="#d4af37" />
+                <Star key={i} size={14} fill="#f5cd47" color="#f5cd47" />
               ))}
             </div>
 
             <p className="testimonial-text">"{tItem.comment}"</p>
 
             <div className="testimonial-author">
-              <div className="author-avatar">{tItem.name[0]}</div>
-              <div>
+              <img 
+                src={tItem.avatar} 
+                alt={tItem.name} 
+                className="author-avatar-img" 
+                loading="lazy"
+              />
+              <div className="author-info">
                 <h4 className="author-name">{tItem.name}</h4>
-                <span className="author-role">{tItem.role} • {tItem.program}</span>
+                <span className="author-role">{tItem.role}</span>
               </div>
             </div>
           </div>
