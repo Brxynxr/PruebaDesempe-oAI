@@ -1,136 +1,138 @@
-# 📚 Documentación Integral del Sistema - Academia Lumina AI
+# 📚 Technical Documentation - Academia Lumina AI Customer Support System
 
-Bienvenido a la documentación técnica oficial de **Academia Lumina AI**, un sistema integral de atención al cliente potenciado por **Generación Aumentada por Recuperación (RAG)**, modelos LLM avanzados de inferencia ultrarrápida (**Groq**), 4 capas robustas de **Ciberseguridad**, automatización de **WhatsApp**, soporte multilingüe (**i18n EN/ES**), y diseño responsivo accesible con **Modo Oscuro**.
+Welcome to the comprehensive technical documentation for **Academia Lumina AI**, a full-stack customer support and lead generation platform powered by **Retrieval-Augmented Generation (RAG)**, ultra-fast LLM inference (**Groq**), 4 robust layers of **Cybersecurity**, **Multilingual (EN/ES) support**, accessible **Dark Mode**, and **Automated WhatsApp Redirection**.
 
 ---
 
-## 🏛️ 1. Arquitectura General del Sistema
+## 🏛️ 1. Architecture Overview
 
-El proyecto está diseñado bajo una arquitectura modular desacoplada basada en microservicios contenerizados mediante **Docker Compose**:
+The system is built as a containerized microservices architecture using **Docker Compose**:
 
 ```mermaid
 graph TD
-    A[Usuario / Navegador Web] -->|HTTP / React UI| B[Frontend Nginx - Puerto 3000]
-    B -->|API Requests + X-API-Key| C[Backend FastAPI - Puerto 8000]
-    C -->|Búsqueda Semántica| D[(ChromaDB Vector Store)]
-    C -->|Inferencia RAG| E[Groq LLM Llama 3.3 70B]
-    C -->|Alertas SMTP| F[Servidor Correo Gmail]
-    C -->|Despacho Automático| G[Automatización WhatsApp / n8n - Puerto 5678]
-    F -->|Redirección Directa| H[WhatsApp del Asesor Cristiano Ronaldo]
+    User([Student / Client]) -->|HTTPS / HTTP| Frontend[React 18 + Vite SPA - Port 3000]
+    Frontend -->|API Requests + X-API-Key| Backend[FastAPI Backend - Port 8000]
+    Backend -->|Semantic Search| Chroma[(ChromaDB Vector Store)]
+    Backend -->|LLM Inference / RAG| Groq[Groq LLM Engine]
+    Backend -->|Lead Notifications| SMTP[Gmail SMTP Service]
+    SMTP -->|One-Click Redirection| WhatsApp[Advisor Cristiano Ronaldo WhatsApp]
+    Backend -.->|Future Roadmap Extension| n8n[n8n Workflow Automation - Port 5678]
 ```
 
-### Componentes Principales:
-1. **Frontend (React + Vite + Nginx)**:
-   - SPA de 2 vistas optimizadas: *Inicio & Programas* y *Modalidades & Certificación*.
-   - Selector de idioma en tiempo real (**Inglés por defecto con toggle a Español**).
-   - Selector de tema (**Modo Claro Papiro/Oro Egipcio y Modo Oscuro Obsidiana**).
-   - Widget flotante interactivo con indicador de escritura (*typing indicator*), animaciones de pulso y formulario de captura de leads.
+### Core Components:
+1. **Frontend (React 18 + Vite + Nginx)**:
+   - Modern Single Page Application (SPA) with 2 primary views: *Home & Programs* and *Modalities & Certification*.
+   - Global reactive state for **Language Toggle** (English by default with Spanish toggle) and **Theme Switcher** (Egyptian Gold Light & Deep Obsidian Dark).
+   - Responsive floating chat widget with fullscreen native sheet on mobile, typing indicators, and in-chat lead capture forms.
 2. **Backend (FastAPI + Python 3.12)**:
-   - Pipeline RAG con ChromaDB y caché TTL en memoria para respuestas en milisegundos.
-   - 4 Capas de seguridad informática activas.
-   - Despacho de correos SMTP asíncronos y automatización de presentación de WhatsApp.
-3. **Automatización (n8n)**:
-   - Flujo de orquestación y webhook para escalamiento y recepción de solicitudes.
+   - RAG pipeline integrating ChromaDB with in-memory TTL caching for sub-second query resolution.
+   - 4 Active cybersecurity layers.
+   - Asynchronous SMTP lead email dispatch with formatted WhatsApp pre-filled contact links.
+3. **Optional Automation Engine (n8n)**:
+   - Decoupled orchestration blueprint for future multi-channel expansion (Meta WhatsApp Cloud API, Telegram, CRM syncing).
 
 ---
 
-## 🛡️ 2. Las 4 Capas de Ciberseguridad Implementadas
+## 🛡️ 2. The 4 Cybersecurity Defense Layers
 
-El sistema cumple rigurosamente con los 4 pilares de seguridad requeridos:
-
-| Capa de Seguridad | Implementación Técnica | Ubicación en el Código |
+| Security Layer | Technical Implementation | Code Location |
 | :--- | :--- | :--- |
-| **1. Rate Limiting por IP Real** | Limitación de tasa configurable (10 req/min) mediante SlowAPI extrayendo la IP real desde `X-Forwarded-For` para evitar evasión tras proxies inversos. | `backend/app/core/security.py` |
-| **2. Autenticación por X-API-Key** | Validación obligatoria de la cabecera `X-API-Key` en todos los endpoints privados (`/chat`, `/chat/lead`, `/metrics`). | `backend/app/core/security.py` |
-| **3. Anti-Prompt Injection & Guardrails** | Normalización Unicode (NFKD) y filtrado estricto por expresiones regulares de patrones de Jailbreak, evasión y manipulación de instrucciones. | `backend/app/core/guardrails.py` |
-| **4. Gestión Segura de Secretos & Sanitización PII** | Centralización de credenciales en `.env` vía Pydantic BaseSettings, enmascaramiento de datos sensibles (cédulas y teléfonos) y desinfección HTML XSS en plantillas MIME. | `backend/app/core/config.py` y `email_service.py` |
+| **1. Real Client IP Rate Limiting** | Dynamic rate limiting (10 req/min) using SlowAPI, extracting real client IP from `X-Forwarded-For` to prevent collective DoS behind reverse proxies. | `backend/app/core/security.py` |
+| **2. API Key Authentication** | Mandatory `X-API-Key` header verification on all private endpoints (`/chat`, `/chat/lead`, `/metrics`). | `backend/app/core/security.py` |
+| **3. Anti-Prompt Injection Guardrails** | Unicode normalization (NFKD) and regex-based pattern matching blocking Jailbreaks, system prompt extractions, and instruction overrides. | `backend/app/core/guardrails.py` |
+| **4. PII Protection & XSS Sanitization** | Automatic masking of Colombian national IDs and mobile numbers in responses, plus `html.escape()` sanitization in MIME email templates. | `backend/app/core/config.py` & `email_service.py` |
 
 ---
 
-## 🤖 3. Flujo Inteligente de Conversación y Captura de Leads
+## 🤖 3. Intelligent Conversation & Lead Capture Flow
 
 ```mermaid
 sequenceDiagram
     autonumber
-    actor Estudiante
-    participant Chat as Widget de Chat (React)
+    actor Student
+    participant Chat as React Floating Chat
     participant API as FastAPI Backend
     participant RAG as ChromaDB & Groq LLM
-    participant Mail as Servicio SMTP
-    actor Asesor as Asesor (Cristiano Ronaldo)
+    participant Mail as SMTP Email Service
+    actor Advisor as Human Advisor (Cristiano Ronaldo)
 
-    Estudiante->>Chat: Consulta ("¿Tienen sedes en Canadá?")
-    Chat->>API: POST /api/v1/chat
-    API->>RAG: Búsqueda Semántica & Evaluación de Alcance
-    RAG-->>API: Respuesta Out-Of-Scope (is_escalated: true)
-    API-->>Chat: Mensaje + Despliegue de Formulario de Lead
-    Estudiante->>Chat: Ingresa Nombre, WhatsApp y Programa
+    Student->>Chat: Inquiry ("Do you have campus or exchange programs in Canada?")
+    Chat->>API: POST /api/v1/chat (with language parameter)
+    API->>RAG: Semantic Retrieval & Scope Validation
+    RAG-->>API: Out-of-Scope Response (is_escalated: true)
+    API-->>Chat: Message + Display Lead Capture Form
+    Student->>Chat: Enters Name, WhatsApp Phone, and Program
     Chat->>API: POST /api/v1/chat/lead
-    API->>Mail: Envío de Correo HTML con Ficha y Botón CTA
-    API-->>Estudiante: "Tus datos han sido enviados a Cristiano Ronaldo"
-    Mail-->>Asesor: Notificación con enlace prellenado de WhatsApp
-    Asesor->>Estudiante: Apertura de chat directo: "Hola [Nombre], soy Cristiano Ronaldo..."
+    API->>Mail: Asynchronous HTML Email Dispatch
+    API-->>Student: "Your information was sent to advisor Cristiano Ronaldo"
+    Mail-->>Advisor: Email notification with pre-filled WhatsApp button
+    Advisor->>Student: Clicks button to open WhatsApp chat with pre-written greeting
 ```
 
-### Reglas de Inteligencia y Filtros:
-- **Consultas sobre la Academia** (*Programas, Precios, Horarios, Modalidades, Certificación*): El bot responde inmediatamente con los datos oficiales de la base vectorial sin solicitar formulario.
-- **Preguntas Ajenas / Matemáticas (Off-Topic)** (*ej. "cuánto es 100 + 100", chistes, código*): El bot responde amablemente indicando que solo está programado para resolver dudas de la academia, sin escalar a asesor.
-- **Consultas Fuera de Alcance Institucional** (*ej. intercambios a Canadá, visas, tours*): El bot despliega el formulario de lead para conectar con Cristiano Ronaldo.
+### Knowledge Base & Escalation Rules:
+- **In-Scope Academy Queries** (*Programs, Tuition, Schedules, Modalities, CEFR Certification*): The bot answers directly and completely using official knowledge base records.
+- **Off-Topic / Unrelated Inquiries** (*Math arithmetic, cooking recipes, programming, trivia*): Politely declined without escalating to human advisors.
+- **Unlisted Institutional Services / Out-of-Scope** (*Exchange trips to Canada, sports scholarships, parking/amenities*): Automatically displays the lead form to connect with admissions advisor **Cristiano Ronaldo**.
 
 ---
 
-## 🌐 4. Soporte Multilingüe (i18n) y Modo Oscuro
+## 🌐 4. Multilingual (i18n) & Dark Mode Engine
 
-### 🇺🇸 Toggle de Idioma (Inglés / Español):
-- El sistema inicia en **Inglés** por defecto para cumplir con el estándar internacional y permite alternar a **Español** con un solo clic en el botón de globo terráqueo del Navbar.
-- Toda la interfaz (Hero, Beneficios, Catálogo de Programas, Modalidades, Ruta MCER, Certificación, Testimonios, Footer y Chat) se adapta de forma instantánea mediante el contexto global `LanguageContext`.
+### Real-Time Language Switching (EN / ES):
+- Uses React Context (`LanguageContext`) with full translation dictionaries.
+- Default interface language is **English**, switchable to **Spanish** via the globe button in the top navigation bar.
+- The RAG backend dynamically receives the active language parameter and enforces response generation strictly in the requested language.
 
-### 🌙 Modo Oscuro / Claro Accesible:
-- Alternador de tema sol/luna integrado en la barra de navegación.
-- Paleta **Dark Obsidian & Egyptian Gold** (`--papyrus-bg: #0f0e0d`, `--papyrus-card: #191715`, `--text-dark: #f5f0e6`, `--egyptian-gold: #f3cf55`).
-- Alto contraste accesible que previene fatiga visual y mantiene la identidad de marca egipcia/dorada.
+### Accessible Dark Mode:
+- Controlled by `ThemeContext` with local storage persistence.
+- Curated high-contrast palette:
+  - **Background**: `#0f0e0d` (Dark Obsidian) / `#fdfbf7` (Light Papyrus)
+  - **Cards**: `#191715` / `#ffffff`
+  - **Accents**: `#f3cf55` / `#d4af37` (Egyptian Gold)
+- Complies with WCAG contrast standards and includes `@media (prefers-reduced-motion: reduce)` accessibility support.
 
 ---
 
-## 🚀 5. Guía de Despliegue y Ejecución
+## 🔮 5. Future Roadmap: Omnichannel & n8n Integration
 
-### Prerrequisitos:
-- Docker y Docker Compose instalados.
-- Archivo `.env` configurado en la carpeta `backend/`.
+While the web platform operates autonomously via FastAPI, the included **n8n service** provides a plug-and-play foundation for future development:
 
-### Comandos de Inicialización:
+1. **Meta WhatsApp Cloud Business API**:
+   - Direct webhook reception in n8n (`/webhook/chat`) for automated bidirectional WhatsApp messaging on official enterprise phone lines.
+2. **CRM & Lead Syncing**:
+   - Automatic insertion of captured leads into Google Sheets, Notion, HubSpot, or Salesforce.
+3. **Multi-Platform Support**:
+   - Connecting Telegram, Facebook Messenger, and Instagram Direct to the same centralized RAG backend.
+
+---
+
+## 🚀 6. Deployment & Execution Guide
+
+### Local Development with Docker:
 ```bash
-# 1. Clonar el repositorio
-git clone <URL_REPOSITORIO>
+# 1. Clone repository
+git clone <REPOSITORY_URL>
 cd PruebaDesempe-oAI
 
-# 2. Construir e iniciar todos los servicios
-docker compose build
-docker compose up -d
+# 2. Build and launch all services
+docker compose up -d --build
 
-# 3. Verificar estado de los contenedores
+# 3. Check service health
 docker compose ps
 ```
 
-### Endpoints y Servicios Activos:
-- 🌐 **Frontend Web**: [http://localhost:3000](http://localhost:3000)
-- ⚙️ **Documentación Swagger API**: [http://localhost:8000/docs](http://localhost:8000/docs)
-- 🩺 **Health Check**: [http://localhost:8000/api/v1/health](http://localhost:8000/api/v1/health)
-- 📊 **Métricas Operativas**: [http://localhost:8000/api/v1/metrics](http://localhost:8000/api/v1/metrics)
-- 🔄 **Orquestador n8n**: [http://localhost:5678](http://localhost:5678)
+### Production Deployment (e.g., Render):
+1. **Backend Web Service**: Deploy `backend/` using Docker runtime with required environment variables (`GROQ_API_KEY`, `BACKEND_API_KEY`, `SMTP_USER`, `SMTP_PASSWORD`, `ALLOWED_ORIGINS`).
+2. **Frontend Static Site**: Deploy `frontend/` with build command `npm run build` and publish directory `dist`, passing `VITE_BACKEND_URL` and `VITE_BACKEND_API_KEY`.
 
 ---
 
-## 🧪 6. Pruebas Automatizadas
+## 🧪 7. Automated Testing
 
-El proyecto cuenta con una suite completa de pruebas unitarias y de integración en `pytest`:
+Run the full test suite inside the backend container:
 
 ```bash
 docker exec lumina_backend pytest -v
 ```
 
-### Cobertura de Pruebas:
-- ✅ `test_security.py`: Autenticación por cabecera `X-API-Key`, bloqueo de Prompt Injection y validación de permisos.
-- ✅ `test_rag_service.py`: Generación de respuestas semánticas, caché TTL y control estricto de escalamiento.
-- ✅ `test_email_service.py`: Construcción de plantillas HTML, sanitización de datos y despacho asíncrono.
-- ✅ `test_health.py` & `test_extras.py`: Verificación de endpoints de salud, métricas y ciclo de vida de la aplicación.
+*Current Suite Status:* **16 passed, 0 failed (100% test pass rate)**.
