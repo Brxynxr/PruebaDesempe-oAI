@@ -13,9 +13,11 @@ const translations = {
     heroSubtitle: 'Certified CEFR methodology (A1 to C1), native teachers, in-person campus and live interactive virtual classes.',
     heroCtaChat: 'Chat with AI Assistant',
     heroCtaPrograms: 'Explore Programs',
-    heroStat1: 'Active Students',
+    heroStat1: 'Active & Graduated Students',
     heroStat2: 'Official Pass Rate',
     heroStat3: 'CEFR Certification',
+    heroRating: 'Verified Rating',
+    heroStudentsBadge: 'Active & Graduated Students',
 
     // Why Us
     whyUsTitle: 'Why Choose Academia Lumina?',
@@ -126,9 +128,11 @@ const translations = {
     heroSubtitle: 'Metodología certificada MCER (A1 a C1), docentes nativos, sede presencial y clases virtuales interactivas en vivo.',
     heroCtaChat: 'Consultar Asistente IA',
     heroCtaPrograms: 'Explorar Programas',
-    heroStat1: 'Estudiantes Activos',
+    heroStat1: 'Estudiantes Activos y Graduados',
     heroStat2: 'Tasa de Aprobación',
     heroStat3: 'Certificación MCER',
+    heroRating: 'Calificación Verificada',
+    heroStudentsBadge: 'Estudiantes Graduados y Activos',
 
     // Why Us
     whyUsTitle: '¿Por qué elegir Academia Lumina?',

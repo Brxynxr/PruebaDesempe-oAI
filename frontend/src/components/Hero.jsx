@@ -1,5 +1,5 @@
 import React from 'react';
-import { Sparkles, ArrowRight, Award, Users, CheckCircle2 } from 'lucide-react';
+import { Sparkles, ArrowRight, Award, Users, CheckCircle2, Star, GraduationCap } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 
 export default function Hero({ onOpenChat }) {
@@ -35,7 +35,7 @@ export default function Hero({ onOpenChat }) {
           <div className="hero-features-chips">
             <div className="chip">
               <Users size={16} className="gold-icon" />
-              <span>1,200+ {t('heroStat1')}</span>
+              <span>+12.000+ {t('heroStat1')}</span>
             </div>
             <div className="chip">
               <CheckCircle2 size={16} className="gold-icon" />
@@ -48,7 +48,9 @@ export default function Hero({ onOpenChat }) {
           </div>
         </div>
 
+        {/* Hero Image Showcase intertwined with floating glassmorphic badges */}
         <div className="hero-image-wrapper">
+          <div className="hero-ambient-glow"></div>
           <div className="image-frame-gold">
             <img 
               src="/images/hero_students.jpg" 
@@ -56,9 +58,25 @@ export default function Hero({ onOpenChat }) {
               className="hero-students-img"
               loading="lazy"
             />
-            <div className="image-overlay-badge">
-              <Award size={16} className="gold-icon" />
-              <span>CEFR / MCER Certified Faculty</span>
+            
+            {/* Subtle Gradient Blend Overlay */}
+            <div className="image-blend-gradient"></div>
+
+            {/* Top Rating Badge */}
+            <div className="floating-hero-pill top-right-pill">
+              <Star size={14} fill="#f5cd47" color="#f5cd47" />
+              <span>4.9/5 {t('heroRating')}</span>
+            </div>
+
+            {/* Bottom Intertwined Students Stat Badge */}
+            <div className="floating-hero-card bottom-card">
+              <div className="floating-card-icon">
+                <GraduationCap size={22} />
+              </div>
+              <div className="floating-card-info">
+                <div className="floating-card-num">+12.000+</div>
+                <div className="floating-card-text">{t('heroStudentsBadge')}</div>
+              </div>
             </div>
           </div>
         </div>
