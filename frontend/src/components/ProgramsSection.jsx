@@ -112,7 +112,7 @@ export default function ProgramsSection({ onOpenChat }) {
         </div>
       </div>
 
-      <div className="programs-grid">
+      <div className={`programs-grid ${filteredPrograms.length === 1 ? 'single-item' : ''}`}>
         {filteredPrograms.map((prog) => {
           const isExpanded = !!expandedCards[prog.id];
           return (
