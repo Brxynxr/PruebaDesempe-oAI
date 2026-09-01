@@ -1558,8 +1558,45 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   padding: 0.8rem 1.1rem;
   border-radius: 14px;
   font-size: 0.9rem;
-  line-height: 1.5;
+  line-height: 1.55;
   word-break: break-word;
+}
+
+.msg-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.msg-paragraph {
+  margin: 0;
+  line-height: 1.55;
+}
+
+.msg-bold {
+  font-weight: 700;
+  color: inherit;
+}
+
+.message-bot .msg-bold {
+  color: #1a1714;
+}
+
+[data-theme='dark'] .message-bot .msg-bold {
+  color: #f7d56e !important;
+}
+
+.msg-list {
+  margin: 0.25rem 0;
+  padding-left: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.msg-list-item {
+  line-height: 1.5;
+  list-style-type: disc;
 }
 
 .message-user {

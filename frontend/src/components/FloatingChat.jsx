@@ -3,6 +3,61 @@ import { MessageSquare, X, Send, User, CheckCircle } from 'lucide-react';
 import { sendChatMessage, sendLeadInfo } from '../services/api';
 import { useLanguage } from '../context/LanguageContext';
 
+function formatMessageContent(text) {
+  if (!text) return null;
+
+  const lines = text.split('\n');
+  const elements = [];
+  let currentList = [];
+
+  const parseInline = (str) => {
+    const parts = str.split(/(\*\*[^*]+\*\*)/g);
+    return parts.map((part, i) => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        return <strong key={i} className="msg-bold">{part.slice(2, -2)}</strong>;
+      }
+      return part;
+    });
+  };
+
+  lines.forEach((line, index) => {
+    const trimmed = line.trim();
+    if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
+      currentList.push(
+        <li key={index} className="msg-list-item">
+          {parseInline(trimmed.slice(2))}
+        </li>
+      );
+    } else {
+      if (currentList.length > 0) {
+        elements.push(
+          <ul key={`list-${index}`} className="msg-list">
+            {currentList}
+          </ul>
+        );
+        currentList = [];
+      }
+      if (trimmed) {
+        elements.push(
+          <p key={index} className="msg-paragraph">
+            {parseInline(line)}
+          </p>
+        );
+      }
+    }
+  });
+
+  if (currentList.length > 0) {
+    elements.push(
+      <ul key="list-end" className="msg-list">
+        {currentList}
+      </ul>
+    );
+  }
+
+  return elements.length > 0 ? elements : text;
+}
+
 export default function FloatingChat({ isOpen, setIsOpen }) {
   const { t, language } = useLanguage();
   const [messages, setMessages] = useState([
@@ -184,7 +239,7 @@ export default function FloatingChat({ isOpen, setIsOpen }) {
                     msg.sender === 'user' ? 'message-user slide-up' : 'message-bot slide-up'
                   }`}
                 >
-                  <div>{msg.text}</div>
+                  <div className="msg-content">{formatMessageContent(msg.text)}</div>
                 </div>
 
                 {/* Inline Lead Capture Card */}
