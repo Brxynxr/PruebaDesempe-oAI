@@ -28,19 +28,29 @@
   --transition-smooth: 0.38s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* Dark Obsidian & Egyptian Gold Theme */
+/* ==========================================================================
+   DARK OBSIDIAN & VIBRANT EGYPTIAN GOLD THEME (PREMIUM PALETTE)
+   ========================================================================== */
 [data-theme='dark'] {
-  --egyptian-gold: #f3cf55;
+  --egyptian-gold: #f5cd47;
   --egyptian-gold-dark: #d4af37;
-  --egyptian-gold-light: #2a2517;
+  --egyptian-gold-light: #2a2213;
+  --egyptian-gold-glow: rgba(245, 205, 71, 0.25);
+  
   --pharaoh-black: #ffffff;
-  --pharaoh-slate: #1c1917;
-  --papyrus-bg: #0f0e0d;
-  --papyrus-card: #191715;
-  --papyrus-border: #2e2924;
-  --text-dark: #f5f0e6;
-  --text-papyrus-muted: #a8a29e;
-  --gradient-pharaoh: linear-gradient(135deg, #191715 0%, #2b2620 100%);
+  --pharaoh-slate: #141210;
+  
+  --papyrus-bg: #0a0908;
+  --papyrus-card: #141210;
+  --papyrus-card-hover: #1c1814;
+  --papyrus-border: #2d251a;
+  
+  --text-dark: #fcf9f2;
+  --text-papyrus-muted: #aca394;
+  
+  --gradient-gold: linear-gradient(135deg, #f7d56e 0%, #e5b83b 50%, #b89228 100%);
+  --gradient-pharaoh: linear-gradient(135deg, #161310 0%, #241e17 100%);
+  --shadow-gold-glow: 0 12px 36px rgba(0, 0, 0, 0.6), 0 0 24px rgba(245, 205, 71, 0.16);
 }
 
 html {
@@ -1801,6 +1811,255 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .chat-send-btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+
+/* ==========================================================================
+   DARK MODE REFINED LUXURY AESTHETICS (OBSIDIAN & GLOWING EGYPTIAN GOLD)
+   ========================================================================== */
+
+[data-theme='dark'] body,
+[data-theme='dark'] .app {
+  background-color: #0b0a09 !important;
+  background-image: 
+    radial-gradient(circle at 50% 0%, rgba(245, 205, 71, 0.05) 0%, transparent 60%),
+    radial-gradient(circle at 100% 40%, rgba(245, 205, 71, 0.03) 0%, transparent 50%) !important;
+}
+
+[data-theme='dark'] .navbar-container {
+  background: rgba(11, 10, 9, 0.92) !important;
+  border-bottom: 1px solid rgba(245, 205, 71, 0.2) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+}
+
+[data-theme='dark'] .spa-tab-nav {
+  background: #151310 !important;
+  border: 1px solid rgba(245, 205, 71, 0.25) !important;
+}
+
+[data-theme='dark'] .tab-btn.active {
+  background: linear-gradient(135deg, #241d11 0%, #17140e 100%) !important;
+  color: #f5cd47 !important;
+  border: 1px solid rgba(245, 205, 71, 0.45) !important;
+  box-shadow: 0 2px 10px rgba(245, 205, 71, 0.18) !important;
+}
+
+[data-theme='dark'] .btn-control-toggle {
+  background: #151310;
+  border-color: rgba(245, 205, 71, 0.3);
+  color: #f5cd47;
+}
+
+[data-theme='dark'] .btn-control-toggle:hover {
+  border-color: #f5cd47;
+  background: #221c12;
+  box-shadow: 0 0 12px rgba(245, 205, 71, 0.25);
+}
+
+[data-theme='dark'] .hero-egyptian {
+  background: radial-gradient(circle at 50% 20%, rgba(245, 205, 71, 0.06) 0%, transparent 70%);
+}
+
+[data-theme='dark'] .egyptian-badge {
+  background: #231c0f;
+  color: #f5cd47;
+  border: 1px solid rgba(245, 205, 71, 0.45);
+  box-shadow: 0 0 14px rgba(245, 205, 71, 0.15);
+}
+
+[data-theme='dark'] .hero-main-title {
+  color: #fcf9f2 !important;
+}
+
+[data-theme='dark'] .btn-egyptian-gold {
+  background: linear-gradient(135deg, #f7d56e 0%, #e5b83b 50%, #b89228 100%);
+  color: #12100e;
+  border: 1px solid #ffe699;
+  box-shadow: 0 8px 24px rgba(245, 205, 71, 0.35);
+}
+
+[data-theme='dark'] .btn-egyptian-gold:hover {
+  box-shadow: 0 12px 32px rgba(245, 205, 71, 0.5);
+  transform: translateY(-3px);
+}
+
+[data-theme='dark'] .btn-secondary {
+  background: transparent;
+  border-color: rgba(245, 205, 71, 0.35);
+  color: #fcf9f2;
+}
+
+[data-theme='dark'] .btn-secondary:hover {
+  border-color: #f5cd47;
+  color: #f5cd47;
+  background: rgba(245, 205, 71, 0.08);
+}
+
+[data-theme='dark'] .image-frame-gold {
+  border-color: rgba(245, 205, 71, 0.45);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8), 0 0 30px rgba(245, 205, 71, 0.18);
+}
+
+[data-theme='dark'] .benefit-card {
+  background: #141210;
+  border: 1px solid #2c251b;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+[data-theme='dark'] .benefit-card:hover {
+  border-color: #f5cd47;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.6), 0 0 20px rgba(245, 205, 71, 0.18);
+}
+
+[data-theme='dark'] .benefit-icon {
+  background: #231c0f;
+  color: #f5cd47;
+  border: 1px solid rgba(245, 205, 71, 0.3);
+}
+
+[data-theme='dark'] .program-card {
+  background: #141210;
+  border: 1px solid #2c251b;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+[data-theme='dark'] .program-card:hover {
+  border-color: #f5cd47;
+  transform: translateY(-6px) scale(1.015);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6), 0 0 25px rgba(245, 205, 71, 0.2);
+}
+
+[data-theme='dark'] .program-pricing-box {
+  background: #1b1713;
+  border: 1px solid #332a1e;
+}
+
+[data-theme='dark'] .price-val {
+  color: #f5cd47;
+}
+
+[data-theme='dark'] .btn-program-inquire {
+  background: #1f1a14;
+  border: 1px solid rgba(245, 205, 71, 0.35);
+  color: #f5cd47;
+}
+
+[data-theme='dark'] .btn-program-inquire:hover {
+  background: #2b2316;
+  border-color: #f5cd47;
+  box-shadow: 0 4px 14px rgba(245, 205, 71, 0.25);
+}
+
+[data-theme='dark'] .modality-card {
+  background: #141210;
+  border: 1px solid #2c251b;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+[data-theme='dark'] .modality-card:hover {
+  border-color: #f5cd47;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.6), 0 0 20px rgba(245, 205, 71, 0.18);
+}
+
+[data-theme='dark'] .modality-icon {
+  background: #231c0f;
+  color: #f5cd47;
+  border: 1px solid rgba(245, 205, 71, 0.3);
+}
+
+[data-theme='dark'] .flowchart-track {
+  background: #12100e;
+  border: 1px solid #2c251b;
+}
+
+[data-theme='dark'] .flowchart-node {
+  background: #1a1612;
+  border: 2px solid #3d3222;
+  color: #aba292;
+}
+
+[data-theme='dark'] .flowchart-node:hover,
+[data-theme='dark'] .flowchart-node.active {
+  border-color: #f5cd47;
+  background: #282114;
+  color: #f5cd47;
+  box-shadow: 0 0 18px rgba(245, 205, 71, 0.4);
+}
+
+[data-theme='dark'] .flowchart-step-detail {
+  background: #151310;
+  border: 1px solid rgba(245, 205, 71, 0.3);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.6);
+}
+
+[data-theme='dark'] .certification-card {
+  background: linear-gradient(145deg, #151310 0%, #191612 100%);
+  border: 1px solid rgba(245, 205, 71, 0.35);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7), 0 0 30px rgba(245, 205, 71, 0.12);
+}
+
+[data-theme='dark'] .diploma-mockup-frame {
+  background: #1a1713;
+  border-color: rgba(245, 205, 71, 0.45);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.7), inset 0 0 20px rgba(245, 205, 71, 0.08);
+}
+
+[data-theme='dark'] .testimonial-card {
+  background: #141210;
+  border: 1px solid #2c251b;
+}
+
+[data-theme='dark'] .testimonial-card:hover {
+  border-color: #f5cd47;
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.5), 0 0 18px rgba(245, 205, 71, 0.15);
+}
+
+[data-theme='dark'] .chat-window {
+  background: #12100e !important;
+  border: 1px solid rgba(245, 205, 71, 0.4) !important;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.85), 0 0 35px rgba(245, 205, 71, 0.18) !important;
+}
+
+[data-theme='dark'] .chat-header {
+  background: linear-gradient(135deg, #241d11 0%, #14120f 100%) !important;
+  border-bottom: 1px solid rgba(245, 205, 71, 0.3) !important;
+}
+
+[data-theme='dark'] .chat-body {
+  background: #0c0b0a !important;
+}
+
+[data-theme='dark'] .message-bot {
+  background: #191613 !important;
+  color: #fcf9f2 !important;
+  border: 1px solid #332a1e !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+}
+
+[data-theme='dark'] .message-user {
+  background: linear-gradient(135deg, #2b2212 0%, #1e180d 100%) !important;
+  border: 1px solid rgba(245, 205, 71, 0.35) !important;
+  color: #ffffff !important;
+}
+
+[data-theme='dark'] .chat-lead-card {
+  background: #191612 !important;
+  border: 1px solid rgba(245, 205, 71, 0.4) !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+
+[data-theme='dark'] .lead-field input,
+[data-theme='dark'] .lead-field select,
+[data-theme='dark'] .chat-input {
+  background: #0f0e0c !important;
+  border-color: #382e20 !important;
+  color: #fcf9f2 !important;
+}
+
+[data-theme='dark'] .lead-field input:focus,
+[data-theme='dark'] .lead-field select:focus,
+[data-theme='dark'] .chat-input:focus {
+  border-color: #f5cd47 !important;
+  box-shadow: 0 0 0 3px rgba(245, 205, 71, 0.25) !important;
 }
 
 /* ==========================================================================
