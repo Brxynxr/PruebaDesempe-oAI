@@ -113,7 +113,7 @@ const translations = {
     chatPhone: 'WhatsApp / Phone Number:',
     chatProgram: 'Program of Interest:',
     chatSubmitLead: 'Request Direct Contact',
-    chatLeadSuccess: 'Great {name}! Your info has been sent to advisor Cristiano Ronaldo. We will contact you shortly on WhatsApp (+57 {phone}).'
+    chatLeadSuccess: 'Great {name}! Your contact details have been sent to our admissions team. We will contact you shortly on WhatsApp (+57 {phone}).'
   },
 
   es: {
@@ -228,7 +228,7 @@ const translations = {
     chatPhone: 'Número de WhatsApp / Teléfono:',
     chatProgram: 'Programa de Interés:',
     chatSubmitLead: 'Solicitar Contacto Directo',
-    chatLeadSuccess: '¡Excelente {name}! Tus datos fueron enviados al asesor Cristiano Ronaldo. Te contactaremos en breve por WhatsApp (+57 {phone}).'
+    chatLeadSuccess: '¡Excelente {name}! Tus datos fueron enviados a nuestro equipo de admisiones. Te contactaremos en breve por WhatsApp (+57 {phone}).'
   }
 };
 

@@ -144,9 +144,9 @@ def _build_whatsapp_link(user_message: str, language: str = "es") -> str:
     """Build a direct WhatsApp URL with pre-filled advisor consultation message."""
     base_url = settings.WHATSAPP_URL
     if language == "en":
-        message_text = f"Hello, I would like personalized guidance from an admissions advisor. My inquiry is: \"{user_message}\""
+        message_text = f"Hello, I would like personalized guidance from admissions advisor {settings.ADVISOR_NAME}. My inquiry is: \"{user_message}\""
     else:
-        message_text = f"Hola, me gustaría atención personalizada con el asesor Cristiano Ronaldo de Academia Lumina. Mi consulta es: \"{user_message}\""
+        message_text = f"Hola, me gustaría atención personalizada con el asesor {settings.ADVISOR_NAME} de Academia Lumina. Mi consulta es: \"{user_message}\""
     encoded_text = urllib.parse.quote(message_text)
     return f"{base_url}?text={encoded_text}"
 

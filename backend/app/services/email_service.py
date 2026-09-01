@@ -66,7 +66,7 @@ class EmailService:
         """Legacy escalation task delegating to lead email handler."""
         EmailService._send_lead_email_task(
             student_name="Estudiante Interesado",
-            student_phone="3247836387",
+            student_phone=settings.WHATSAPP_NUMBER,
             program="Inglés",
             user_message=user_message,
             session_id=session_id
@@ -95,9 +95,12 @@ class EmailService:
         safe_program = html.escape(program)
         safe_msg = html.escape(clean_user_msg)
 
-        # Official advisor greeting from Cristiano Ronaldo (Admin: +57 324 783 6387)
+        # Official advisor greeting from configured advisor
+        advisor_name = settings.ADVISOR_NAME
+        admin_phone = settings.WHATSAPP_NUMBER
+
         greeting_text = (
-            f"Hola {student_name}, un gusto saludarte. Mi nombre es Cristiano Ronaldo, asesor de Academia Lumina, "
+            f"Hola {student_name}, un gusto saludarte. Mi nombre es {advisor_name}, asesor de Academia Lumina, "
             f"y recibimos tu consulta sobre nuestro programa de {program}. "
             f"Respecto a tu solicitud: \"{clean_user_msg}\", ¿en qué te puedo colaborar hoy?"
         )
@@ -106,7 +109,6 @@ class EmailService:
 
         # 1. Automated WhatsApp Dispatch Simulation / n8n Webhook trigger
         try:
-            admin_phone = "+57 324 783 6387"
             logger.info(
                 "[WhatsApp Automation] Dispatched automated greeting from Admin (%s) to Student (+%s): '%s'",
                 admin_phone, clean_phone, greeting_text
@@ -125,8 +127,8 @@ class EmailService:
                     },
                     timeout=2
                 )
-            except Exception:
-                pass  # n8n optional trigger
+            except Exception as n8n_err:
+                logger.debug("[n8n Webhook] Webhook optional trigger not reached: %s", str(n8n_err))
         except Exception as e:
             logger.error("[WhatsApp Automation] Dispatch error: %s", str(e))
 
