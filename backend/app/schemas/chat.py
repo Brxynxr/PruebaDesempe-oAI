@@ -1,17 +1,25 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from typing import Optional, List, Dict, Any
 
 class ChatRequest(BaseModel):
     """
-    Schema for user query or n8n flow request.
+    Schema for user chat inquiry requests.
     """
     message: str = Field(..., min_length=1, description="User message or question")
     session_id: Optional[str] = Field(default="default", description="Unique session identifier for tracking")
     language: Optional[str] = Field(default="en", description="Language of response ('en' or 'es')")
 
+    @field_validator('message')
+    @classmethod
+    def validate_message_not_blank(cls, v: str) -> str:
+        cleaned = v.strip()
+        if not cleaned:
+            raise ValueError("Message cannot be empty or contain only whitespace.")
+        return cleaned
+
 class LeadRequest(BaseModel):
     """
-    Schema for registering student lead data.
+    Schema for registering student lead contact data.
     """
     name: str = Field(..., min_length=2, description="Student name")
     phone: str = Field(..., min_length=7, description="Student WhatsApp/phone number")
@@ -19,6 +27,22 @@ class LeadRequest(BaseModel):
     user_message: Optional[str] = Field(default="", description="Original query from the student")
     session_id: Optional[str] = Field(default="default", description="Session ID")
     language: Optional[str] = Field(default="en", description="Language code")
+
+    @field_validator('name')
+    @classmethod
+    def validate_name(cls, v: str) -> str:
+        cleaned = v.strip()
+        if len(cleaned) < 2:
+            raise ValueError("Name must be at least 2 characters long.")
+        return cleaned
+
+    @field_validator('phone')
+    @classmethod
+    def validate_phone(cls, v: str) -> str:
+        cleaned = v.strip()
+        if len(cleaned) < 7:
+            raise ValueError("Phone number must have at least 7 digits.")
+        return cleaned
 
 class SourceDocument(BaseModel):
     """

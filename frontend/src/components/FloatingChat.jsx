@@ -253,7 +253,18 @@ export default function FloatingChat({ isOpen, setIsOpen }) {
         }
       ]);
     } catch (err) {
-      alert(language === 'es' ? 'Error enviando tus datos. Por favor intenta de nuevo.' : 'Error sending your data. Please try again.');
+      setMessages((prev) => [
+        ...prev,
+        {
+          sender: 'bot',
+          text: language === 'es' 
+            ? '⚠️ Hubo un inconveniente al enviar tus datos. Por favor verifica tu conexión e inténtalo de nuevo.' 
+            : '⚠️ There was an issue submitting your details. Please check your connection and try again.',
+          isEscalated: false,
+          isClosed: false,
+          showLeadForm: false
+        }
+      ]);
     } finally {
       setLoading(false);
     }
