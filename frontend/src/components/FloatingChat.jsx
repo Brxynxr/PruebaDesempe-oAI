@@ -132,6 +132,7 @@ export default function FloatingChat({ isOpen, setIsOpen }) {
     try {
       const data = await sendChatMessage(userText, 'web_session_01', language);
       const isEscalated = data.is_escalated;
+      const isClosed = data.is_closed;
 
       setMessages((prev) => [
         ...prev,
@@ -139,12 +140,13 @@ export default function FloatingChat({ isOpen, setIsOpen }) {
           sender: 'bot',
           text: data.response,
           isEscalated: isEscalated,
+          isClosed: isClosed,
           showLeadForm: isEscalated
         }
       ]);
 
-      // If out-of-scope, schedule 3-minute inactivity follow-up
-      if (isEscalated) {
+      // If out-of-scope, schedule 3-minute inactivity follow-up only if not closed
+      if (isEscalated && !isClosed) {
         setActiveLeadMessage(userText);
         inactivityTimerRef.current = setTimeout(() => {
           setMessages((prev) => [
@@ -153,6 +155,7 @@ export default function FloatingChat({ isOpen, setIsOpen }) {
               sender: 'bot',
               text: t('chatInactivity'),
               isEscalated: false,
+              isClosed: false,
               showLeadForm: false
             }
           ]);
@@ -241,6 +244,37 @@ export default function FloatingChat({ isOpen, setIsOpen }) {
                 >
                   <div className="msg-content">{formatMessageContent(msg.text)}</div>
                 </div>
+
+                {/* Closing / Farewell Quick Action Controls */}
+                {msg.isClosed && index === messages.length - 1 && (
+                  <div className="chat-closing-controls fade-in">
+                    <button 
+                      className="btn-chat-action close-action" 
+                      onClick={() => setIsOpen(false)}
+                      type="button"
+                    >
+                      <X size={14} />
+                      <span>{language === 'es' ? 'Cerrar chat' : 'Close chat'}</span>
+                    </button>
+                    <button 
+                      className="btn-chat-action restart-action" 
+                      onClick={() => {
+                        setMessages([
+                          {
+                            sender: 'bot',
+                            text: t('chatInitialGreeting'),
+                            isEscalated: false,
+                            isClosed: false,
+                            showLeadForm: false
+                          }
+                        ]);
+                      }}
+                      type="button"
+                    >
+                      <span>{language === 'es' ? 'Nueva consulta 💬' : 'New question 💬'}</span>
+                    </button>
+                  </div>
+                )}
 
                 {/* Inline Lead Capture Card */}
                 {msg.showLeadForm && !leadSubmitted && index === messages.length - 1 && (

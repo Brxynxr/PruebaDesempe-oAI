@@ -34,6 +34,7 @@ class ChatResponse(BaseModel):
     """
     response: str = Field(..., description="Response synthesized by the LLM")
     is_escalated: bool = Field(default=False, description="Indicates if the query requires human escalation")
+    is_closed: bool = Field(default=False, description="Indicates if the conversation reached a closing or farewell state")
     whatsapp_link: Optional[str] = Field(default=None, description="Direct WhatsApp link in case of escalation")
     sources: List[SourceDocument] = Field(default_factory=list, description="Sources consulted in the vector database")
     session_id: str = Field(..., description="Associated session ID")

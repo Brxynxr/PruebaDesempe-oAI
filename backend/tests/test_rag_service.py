@@ -26,7 +26,17 @@ def test_rag_service_out_of_scope_query():
     assert response.is_escalated is True
     assert settings.WHATSAPP_URL in response.whatsapp_link
     assert "text=" in response.whatsapp_link
-    assert "WhatsApp" in response.response or "asesores" in response.response
+    assert "asesor" in response.response.lower() or "whatsapp" in response.response.lower()
+
+def test_rag_service_closing_intent():
+    """
+    Verifica que respuestas como 'no', 'todo claro' o 'gracias' cierren la conversación amablemente sin generar bucle.
+    """
+    service = RAGService()
+    response = service.generate_response(user_message="No, muchas gracias, todo claro")
+    assert response.is_closed is True
+    assert response.is_escalated is False
+    assert "con mucho gusto" in response.response.lower() or "placer" in response.response.lower()
 
 def test_chat_api_endpoint():
     """

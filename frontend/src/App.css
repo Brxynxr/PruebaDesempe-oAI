@@ -1725,8 +1725,73 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 }
 
 /* Lead Capture Form Card */
+.chat-closing-controls {
+  display: flex;
+  gap: 0.6rem;
+  margin: 0.5rem 0 0.85rem 0;
+  align-self: flex-start;
+}
+
+.btn-chat-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.45rem 0.85rem;
+  min-height: 38px;
+  border-radius: var(--radius-full);
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.btn-chat-action.close-action {
+  background: transparent;
+  border: 1px solid var(--papyrus-border);
+  color: var(--text-papyrus-muted);
+}
+
+.btn-chat-action.close-action:hover {
+  border-color: #ef4444;
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.08);
+}
+
+.btn-chat-action.restart-action {
+  background: var(--egyptian-gold-light);
+  border: 1px solid var(--egyptian-gold);
+  color: #854d0e;
+}
+
+.btn-chat-action.restart-action:hover {
+  background: var(--egyptian-gold);
+  color: #12100e;
+}
+
+[data-theme='dark'] .btn-chat-action.close-action {
+  border-color: #382e22;
+  color: #aca394;
+}
+
+[data-theme='dark'] .btn-chat-action.close-action:hover {
+  border-color: #f87171;
+  color: #f87171;
+  background: rgba(248, 113, 113, 0.12);
+}
+
+[data-theme='dark'] .btn-chat-action.restart-action {
+  background: #231c0f;
+  border-color: rgba(245, 205, 71, 0.45);
+  color: #f5cd47;
+}
+
+[data-theme='dark'] .btn-chat-action.restart-action:hover {
+  background: var(--gradient-gold);
+  color: #12100e;
+}
+
 .chat-lead-card {
-  background: #ffffff;
+  background: #fdf9e7;
   border: 2px solid var(--egyptian-gold);
   border-radius: var(--radius-md);
   padding: 1rem;

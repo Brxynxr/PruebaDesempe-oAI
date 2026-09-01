@@ -109,8 +109,12 @@ FEW_SHOT_EXAMPLES = [
         "content": "¿Cómo se prepara una pizza napolitana?"
     },
     {
+        "role": "user",
+        "content": "No, muchas gracias, todo claro."
+    },
+    {
         "role": "assistant",
-        "content": "Como asistente virtual de la academia, solo puedo orientarte sobre nuestros programas de idiomas (**Inglés, Francés y Portugués**), horarios, precios, modalidades y certificaciones.\n\n¿En qué te puedo colaborar con respecto a nuestros programas?"
+        "content": "¡Con mucho gusto! Fue un placer colaborarte. Si más adelante tienes alguna otra duda o deseas inscribirte en nuestros programas de **Inglés, Francés o Portugués**, aquí estaré para ayudarte. ¡Que tengas un excelente día! ✨"
     }
 ]
 
@@ -214,8 +218,26 @@ def _check_strict_escalation(user_message: str, assistant_response: str) -> bool
     if any(phrase in resp_lower for phrase in explicit_escalation_phrases):
         return True
 
-    # 4. Normal informational queries (curso de inglés, precios, horarios, etc.) MUST NEVER escalate
     return False
+
+def _is_closing_or_farewell_query(text: str) -> bool:
+    """Detect if the user is answering 'no', expressing thanks, or saying goodbye to naturally close the conversation."""
+    if not text:
+        return False
+    cleaned = text.strip().lower()
+    cleaned = re.sub(r'[^\w\s]', '', cleaned).strip()
+    closing_phrases = {
+        "no", "no gracias", "por ahora no", "ninguna", "nada mas", "nada más",
+        "todo claro", "todo bien", "eso era todo", "eso es todo", "ninguna gracias",
+        "gracias", "muchas gracias", "gracias por la info", "gracias por la información",
+        "chao", "adios", "adiós", "hasta luego", "bye", "thanks", "thank you",
+        "no thanks", "all good", "that is all", "nothing else", "im good", "i am good",
+        "no more questions", "no tengo mas dudas", "no tengo más dudas", "listo gracias",
+        "perfecto gracias", "ok gracias", "vale gracias"
+    }
+    if cleaned in closing_phrases:
+        return True
+    return bool(re.match(r'^(no|chao|adios|adiós|bye|gracias|thanks)[\s\w]*$', cleaned))
 
 # ==========================================================================
 # RAG SERVICE IMPLEMENTATION
@@ -241,7 +263,23 @@ class RAGService:
         """Process user query, check cache, retrieve vector context, and generate response via Groq in the requested language."""
         lang_code = "en" if language.lower().startswith("en") else "es"
         
-        # 0. Check for off-topic / unrelated queries
+        # 0. Check for Closing / Farewell / "No thanks" queries
+        if _is_closing_or_farewell_query(user_message):
+            closing_msg = (
+                "You're very welcome! It was a pleasure assisting you. If you have any further questions or wish to enroll in our **English, French, or Portuguese** programs later on, I'll be here to help. Have a wonderful day! ✨"
+                if lang_code == "en" else
+                "¡Con mucho gusto! Fue un placer colaborarte. Si más adelante tienes alguna otra duda o deseas iniciar tu inscripción en nuestros programas de **Inglés, Francés o Portugués**, aquí estaré para ayudarte. ¡Que tengas un excelente día! ✨"
+            )
+            return ChatResponse(
+                response=closing_msg,
+                is_escalated=False,
+                is_closed=True,
+                whatsapp_link=None,
+                sources=[],
+                session_id=session_id
+            )
+
+        # 0.1 Check for off-topic / unrelated queries
         if _is_unrelated_query(user_message):
             off_topic_msg = (
                 "As the virtual assistant of the academy, I can only guide you regarding our language programs (**English, French, and Portuguese**), schedules, pricing, modalities, and certifications.\n\nHow can I help you regarding our programs?"
@@ -251,6 +289,7 @@ class RAGService:
             return ChatResponse(
                 response=off_topic_msg,
                 is_escalated=False,
+                is_closed=False,
                 whatsapp_link=None,
                 sources=[],
                 session_id=session_id
