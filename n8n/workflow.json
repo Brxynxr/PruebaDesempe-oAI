@@ -26,7 +26,7 @@
           "parameters": [
             {
               "name": "X-API-Key",
-              "value": "lumina_secret_key_2026"
+              "value": "={{ $env.BACKEND_API_KEY || 'lumina_dev_api_key_2026' }}"
             },
             {
               "name": "Content-Type",
@@ -70,8 +70,8 @@
     },
     {
       "parameters": {
-        "fromEmail": "breynermanga07@gmail.com",
-        "toEmail": "bmegami7@gmail.com",
+        "fromEmail": "={{ $env.SMTP_SENDER_EMAIL || 'admissions@academialumina.edu.co' }}",
+        "toEmail": "={{ $env.ESCALATION_EMAIL || 'admissions@academialumina.edu.co' }}",
         "subject": "=⚠️ Alerta de Escalamiento Humano - Academia Lumina (Sesión: {{ $json.session_id }})",
         "text": "=Se ha recibido una consulta que supera el alcance automatizado de la base de documentos oficiales.\n\nDetalles de la interacción:\n--------------------------------------------------\n- ID de Sesión: {{ $json.session_id }}\n- Respuesta entregada al usuario: {{ $json.response }}\n- Enlace WhatsApp enviado: {{ $json.whatsapp_link }}\n--------------------------------------------------\nPor favor estar atentos al canal de WhatsApp (+57 324 783 6387) para atender al estudiante.",
         "options": {}

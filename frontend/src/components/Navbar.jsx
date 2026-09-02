@@ -58,12 +58,6 @@ export default function Navbar({ activeTab, setActiveTab, onOpenChat }) {
           >
             {theme === 'light' ? <Moon size={16} /> : <Sun size={16} />}
           </button>
-
-          {/* Chat Open Button */}
-          <button className="nav-chat-btn" onClick={onOpenChat}>
-            <Sparkles size={16} />
-            <span>{t('aiAssistant')}</span>
-          </button>
         </div>
       </nav>
     </header>

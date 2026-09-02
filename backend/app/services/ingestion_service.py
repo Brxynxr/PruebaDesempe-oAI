@@ -39,6 +39,19 @@ class IngestionService:
                 })
         return documents
 
+    def _compute_clean_overlap(self, text: str) -> str:
+        """
+        Computes clean overlap text respecting word and newline boundaries to prevent word fragmentation.
+        """
+        if len(text) <= self.chunk_overlap:
+            return text.strip()
+        raw_overlap = text[-self.chunk_overlap:]
+        # Find first whitespace or newline in raw_overlap to start on a clean boundary
+        first_break = max(raw_overlap.find("\n"), raw_overlap.find(" "))
+        if first_break != -1 and first_break < len(raw_overlap) - 1:
+            return raw_overlap[first_break + 1:].strip()
+        return raw_overlap.strip()
+
     def create_chunks(self, documents: List[Dict[str, str]]) -> List[Dict[str, Any]]:
         """
         Splits documents respecting logical sections (Markdown headers # / ## / ###)
@@ -76,7 +89,7 @@ class IngestionService:
                                     "metadata": {"source": source}
                                 })
                                 chunk_counter += 1
-                                overlap = sub_chunk[-self.chunk_overlap:] if len(sub_chunk) > self.chunk_overlap else sub_chunk
+                                overlap = self._compute_clean_overlap(sub_chunk)
                                 sub_chunk = f"{overlap}\n\n{p}".strip()
                             else:
                                 sub_chunk = p.strip()

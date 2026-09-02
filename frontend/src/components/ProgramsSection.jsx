@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { BookOpen, Check, Sparkles, ChevronDown, ChevronUp, Layers } from 'lucide-react';
+import { BookOpen, Check, Sparkles, ChevronDown, ChevronUp, Layers, Globe } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 
 export default function ProgramsSection({ onOpenChat }) {
@@ -76,7 +76,7 @@ export default function ProgramsSection({ onOpenChat }) {
     : programs.filter((p) => p.id === activeFilter);
 
   return (
-    <section id="programas" className="section-container programs-section">
+    <section id="programas" className="section-container programs-section fade-in-section">
       <div className="section-header text-center">
         <h2 className="section-title">{t('programsTitle')}</h2>
         <p className="section-subtitle">
@@ -89,25 +89,29 @@ export default function ProgramsSection({ onOpenChat }) {
             className={`filter-btn ${activeFilter === 'all' ? 'active' : ''}`}
             onClick={() => setActiveFilter('all')}
           >
-            {t('allLanguages')}
+            <Globe size={16} />
+            <span>{t('allLanguages')}</span>
           </button>
           <button 
             className={`filter-btn ${activeFilter === 'ingles' ? 'active' : ''}`}
             onClick={() => setActiveFilter('ingles')}
           >
-            🇬🇧 {t('english')}
+            <span className="pill-flag">🇬🇧</span>
+            <span>{t('english')}</span>
           </button>
           <button 
             className={`filter-btn ${activeFilter === 'frances' ? 'active' : ''}`}
             onClick={() => setActiveFilter('frances')}
           >
-            🇫🇷 {t('french')}
+            <span className="pill-flag">🇫🇷</span>
+            <span>{t('french')}</span>
           </button>
           <button 
             className={`filter-btn ${activeFilter === 'portugues' ? 'active' : ''}`}
             onClick={() => setActiveFilter('portugues')}
           >
-            🇧🇷 {t('portuguese')}
+            <span className="pill-flag">🇧🇷</span>
+            <span>{t('portuguese')}</span>
           </button>
         </div>
       </div>

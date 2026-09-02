@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { MessageSquare, X, Send, Bot, User, Check, AlertCircle } from 'lucide-react';
+import { BrainCircuit, X, Send, Bot, User, Check, AlertCircle } from 'lucide-react';
 import { sendChatMessage, sendLeadInfo } from '../services/api';
 import { useLanguage } from '../context/LanguageContext';
 
@@ -297,7 +297,7 @@ export default function FloatingChat({ isOpen, setIsOpen }) {
           title={t('aiAssistant')}
           aria-label="Open AI Customer Support Chat"
         >
-          <MessageSquare size={28} />
+          <BrainCircuit size={30} className="ai-brain-icon" />
         </button>
       ) : (
         <div className="chat-window scale-in">

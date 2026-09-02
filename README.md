@@ -59,6 +59,7 @@ cp .env.example .env
 | Variable | Description | Default / Example |
 |---|---|---|
 | `GROQ_API_KEY` | Groq API Key for LLM Inference ([Get key](https://console.groq.com/keys)) | `gsk_your_groq_key_here` |
+| `GEMINI_API_KEY` | Google Gemini API Key for Multilingual Vector Embeddings | `AIzaSy_your_gemini_key_here` |
 | `BACKEND_API_KEY` | Secret key for authenticating incoming API requests | `your_secure_api_key_here` |
 | `ENVIRONMENT` | Application environment (`development` / `production`) | `development` |
 | `ALLOWED_ORIGINS` | Comma-separated allowed CORS origins | `http://localhost:3000,http://127.0.0.1:3000` |

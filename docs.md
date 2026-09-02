@@ -3,7 +3,6 @@
 **Asistente Inteligente de Atención al Cliente con RAG, Ciberseguridad y Automatización Omnicanal**
 
 * **Autor:** Breyner Manga
-* **Lema:** *El que sabe sabe*
 * **Versión:** 2.0 (Producción Hardened)
 * **Fecha:** Septiembre 2026
 * **Institución / Caso de Estudio:** Academia Lumina / Riwi Lingua (Colombia)
@@ -82,12 +81,12 @@ Para resolver este desafío de manera profesional, escalable y segura, se constr
   * *Modelos Locales (Ollama / vLLM):* Descartados porque exigen GPUs dedicadas con alto consumo de memoria RAM y VRAM (16GB+), lo que impediría el despliegue ligero y económico en contenedores de servidores compartidos.
 * **Razonamiento técnico:** La arquitectura LPU (*Language Processing Unit*) de Groq entrega tiempos de primer token (*Time To First Token - TTFT*) inferiores a 300 ms, compatibilidad 100% con la API estándar de OpenAI Chat Completions y un nivel de seguimiento de instrucciones RAG excepcional con temperatura 0.2.
 
-### 2.3 Elección de la Base de Datos Vectorial: ChromaDB
-* **Opción elegida:** ChromaDB con almacenamiento persistente local en disco (`./chroma_data`).
+### 2.3 Elección de la Base de Datos Vectorial y Embeddings: ChromaDB + Google Gemini Embeddings
+* **Opción elegida:** ChromaDB con almacenamiento persistente local en disco (`./chroma_data`) alimentado por la API de **Google Gemini Embeddings (`text-embedding-004`)** mediante la clase personalizada `GeminiEmbeddingFunction`.
 * **Alternativas consideradas y descartadas:**
   * *Pinecone:* Descartado por ser un servicio SaaS propietario dependiente de conexión a internet constante, latencias de red añadidas y costos recurrentes de suscripción.
   * *FAISS (Facebook AI Similarity Search):* Aunque es extremadamente rápido, requiere desarrollar manualmente la capa de persistencia de metadatos, serialización a disco y sincronización de índices.
-* **Razonamiento técnico:** ChromaDB se ejecuta embebido dentro del mismo proceso del backend, no requiere bases de datos externas adicionales, mantiene los metadatos de los archivos Markdown asociados a cada fragmento y persiste automáticamente el índice HNSW en disco.
+* **Razonamiento técnico:** ChromaDB se ejecuta embebido dentro del mismo proceso del backend, no requiere bases de datos externas adicionales, mantiene los metadatos de los archivos Markdown asociados a cada fragmento y persiste automáticamente el índice HNSW en disco. La integración con Gemini Embeddings (`text-embedding-004`, 768 dimensiones) ofrece alta precisión en búsquedas semánticas multilingües (Español e Inglés) con un fallback automático al modelo local en entornos de desarrollo.
 
 ### 2.4 Rol de n8n: Middleware de Integración Omnicanal
 * **Opción elegida:** n8n contenerizado actuando como enrutador y conector de mensajería externa.
@@ -1147,7 +1146,7 @@ docker compose up -d --build
 * **Consola n8n:** `http://localhost:5678`
 
 ### 7.2 Ejecución de Pruebas Unitarias Automatizadas
-Ejecutar los 24 tests dentro del contenedor backend:
+Ejecutar los 29 tests dentro del contenedor backend:
 
 ```bash
 docker exec lumina_backend pytest -v
@@ -1155,19 +1154,20 @@ docker exec lumina_backend pytest -v
 
 ```text
 ============================= test session starts ==============================
-collected 24 items
+collected 29 items
 
-tests/test_cache.py ...                                                  [ 12%]
-tests/test_cors.py ..                                                    [ 20%]
-tests/test_email_service.py ...                                          [ 33%]
-tests/test_health.py ..                                                  [ 41%]
-tests/test_metrics.py ...                                                [ 54%]
-tests/test_rag_search.py ..                                              [ 62%]
-tests/test_rag_service.py ....                                           [ 79%]
-tests/test_rate_limit.py .                                               [ 83%]
+tests/test_cache.py ...                                                  [ 10%]
+tests/test_cors.py ..                                                    [ 17%]
+tests/test_edge_cases.py .....                                           [ 34%]
+tests/test_email_service.py ...                                          [ 44%]
+tests/test_health.py ..                                                  [ 51%]
+tests/test_metrics.py ...                                                [ 62%]
+tests/test_rag_search.py ..                                              [ 68%]
+tests/test_rag_service.py ....                                           [ 82%]
+tests/test_rate_limit.py .                                               [ 86%]
 tests/test_security.py ....                                              [100%]
 
-======================== 24 passed, 1 warning in 24.89s ========================
+======================== 29 passed, 8 warnings in 33.07s ========================
 ```
 
 ---

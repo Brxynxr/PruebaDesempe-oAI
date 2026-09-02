@@ -133,7 +133,7 @@ class EmailService:
             logger.error("[WhatsApp Automation] Dispatch error: %s", str(e))
 
         # 2. Email Subject & Body
-        subject = f"📥 Nuevo Lead de Estudiante: {student_name} - {program} (Sesión: {session_id})"
+        subject = f"Nuevo Lead de Estudiante: {student_name} - {program} (Sesión: {session_id})"
 
         plain_body = f"""Se ha recibido una solicitud de contacto directo de un estudiante.
 
@@ -163,7 +163,7 @@ Enlace directo de contacto para el Asesor: {student_whatsapp_url}
                     <!-- Encabezado -->
                     <tr>
                         <td style="background-color: #12100e; padding: 28px 30px; text-align: center; border-bottom: 2px solid #d4af37;">
-                            <span style="background-color: #fef9c3; color: #854d0e; font-size: 11px; font-weight: 800; text-transform: uppercase; padding: 5px 14px; border-radius: 20px; letter-spacing: 1px; display: inline-block; margin-bottom: 10px;">👤 NUEVA SOLICITUD DE ASESORÍA</span>
+                            <span style="background-color: #fef9c3; color: #854d0e; font-size: 11px; font-weight: 800; text-transform: uppercase; padding: 5px 14px; border-radius: 20px; letter-spacing: 1px; display: inline-block; margin-bottom: 10px;">NUEVA SOLICITUD DE ASESORÍA</span>
                             <h1 style="color: #ffffff; margin: 0; font-size: 22px; font-weight: 900; letter-spacing: -0.5px;">Academia Lumina</h1>
                         </td>
                     </tr>
@@ -176,7 +176,7 @@ Enlace directo de contacto para el Asesor: {student_whatsapp_url}
                             
                             <!-- Caja de Datos del Estudiante -->
                             <div style="background-color: #fdfbf7; border-left: 4px solid #d4af37; border-radius: 10px; padding: 20px; margin: 24px 0; border: 1px solid #e6dfd5;">
-                                <h3 style="margin-top: 0; color: #12100e; font-size: 15px; border-bottom: 1px solid #e6dfd5; padding-bottom: 10px;">📋 Ficha del Estudiante</h3>
+                                <h3 style="margin-top: 0; color: #12100e; font-size: 15px; border-bottom: 1px solid #e6dfd5; padding-bottom: 10px;">Ficha del Estudiante</h3>
                                 
                                 <p style="margin: 8px 0; font-size: 14px; color: #12100e;"><strong>Estudiante:</strong> {safe_name}</p>
                                 <p style="margin: 8px 0; font-size: 14px; color: #12100e;"><strong>WhatsApp:</strong> <a href="tel:+{clean_phone}" style="color: #b89228; text-decoration: none; font-weight: bold;">+{clean_phone}</a></p>
@@ -192,12 +192,12 @@ Enlace directo de contacto para el Asesor: {student_whatsapp_url}
                             <!-- Botón CTA WhatsApp Directo -->
                             <div style="text-align: center; margin: 28px 0 20px 0;">
                                 <a href="{student_whatsapp_url}" target="_blank" style="background-color: #12100e; color: #d4af37; border: 1px solid #d4af37; font-size: 14px; font-weight: 800; text-decoration: none; padding: 14px 28px; border-radius: 30px; display: inline-block; box-shadow: 0 4px 15px rgba(212, 175, 55, 0.25);">
-                                    💬 Abrir Chat de WhatsApp con {safe_name}
+                                    Abrir Chat de WhatsApp con {safe_name}
                                 </a>
                             </div>
 
                             <p style="font-size: 12px; color: #6e675f; text-align: center; margin: 0; font-style: italic;">
-                                Al presionar el botón se abrirá el chat del estudiante con el mensaje de presentación de Cristiano Ronaldo listo para continuar la conversación.
+                                Al presionar el botón se abrirá el chat del estudiante con el mensaje de presentación de {html.escape(advisor_name)} listo para continuar la conversación.
                             </p>
                         </td>
                     </tr>

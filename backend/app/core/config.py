@@ -25,6 +25,7 @@ class Settings(BaseSettings):
     
     # API Keys and Security
     GROQ_API_KEY: str = os.getenv("GROQ_API_KEY", "")
+    GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
     BACKEND_API_KEY: str = os.getenv("BACKEND_API_KEY", "lumina_dev_api_key_2026")
     RATE_LIMIT_PER_MINUTE: str = os.getenv("RATE_LIMIT_PER_MINUTE", "10/minute")
     ALLOWED_ORIGINS: str = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:8000,http://127.0.0.1:3000")

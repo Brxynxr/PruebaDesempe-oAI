@@ -8,6 +8,7 @@ python-dotenv>=1.0.1
 # RAG y LLM
 chromadb>=0.4.24
 groq>=0.4.2
+google-genai>=0.1.0
 
 # Seguridad y Limites
 slowapi>=0.1.9
