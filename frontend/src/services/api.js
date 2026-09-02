@@ -17,7 +17,7 @@ const API_KEY = import.meta.env.VITE_BACKEND_API_KEY || '';
  * @param {string} language - Active interface language ('en' or 'es')
  * @returns {Promise<Object>} Structured response from the backend RAG engine
  */
-export async function sendChatMessage(message, sessionId = 'web_session_01', language = 'en') {
+export async function sendChatMessage(message, sessionId = 'web_session_01', language = 'en', history = []) {
   try {
     const response = await fetch(`${API_BASE_URL}/chat`, {
       method: 'POST',
@@ -28,7 +28,8 @@ export async function sendChatMessage(message, sessionId = 'web_session_01', lan
       body: JSON.stringify({
         message: message,
         session_id: sessionId,
-        language: language
+        language: language,
+        history: history
       })
     });
 

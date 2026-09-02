@@ -28,11 +28,12 @@ def handle_chat_message(
     # Validate incoming message against Prompt Injections
     validate_prompt_injection(payload.message)
     
-    # Process the query with RAG and Groq respecting the requested language ('en' or 'es')
+    # Process the query with RAG and Groq respecting the requested language and conversation history
     return rag_service.generate_response(
         user_message=payload.message,
         session_id=payload.session_id,
-        language=payload.language or "en"
+        language=payload.language or "en",
+        history=payload.history or []
     )
 
 @router.post(

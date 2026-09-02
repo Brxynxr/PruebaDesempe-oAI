@@ -1,62 +1,7 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { MessageSquare, X, Send, User, CheckCircle, AlertCircle, Check } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { MessageSquare, X, Send, Bot, User, Check, AlertCircle } from 'lucide-react';
 import { sendChatMessage, sendLeadInfo } from '../services/api';
 import { useLanguage } from '../context/LanguageContext';
-
-function formatMessageContent(text) {
-  if (!text) return null;
-
-  const lines = text.split('\n');
-  const elements = [];
-  let currentList = [];
-
-  const parseInline = (str) => {
-    const parts = str.split(/(\*\*[^*]+\*\*)/g);
-    return parts.map((part, i) => {
-      if (part.startsWith('**') && part.endsWith('**')) {
-        return <strong key={i} className="msg-bold">{part.slice(2, -2)}</strong>;
-      }
-      return part;
-    });
-  };
-
-  lines.forEach((line, index) => {
-    const trimmed = line.trim();
-    if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
-      currentList.push(
-        <li key={index} className="msg-list-item">
-          {parseInline(trimmed.slice(2))}
-        </li>
-      );
-    } else {
-      if (currentList.length > 0) {
-        elements.push(
-          <ul key={`list-${index}`} className="msg-list">
-            {currentList}
-          </ul>
-        );
-        currentList = [];
-      }
-      if (trimmed) {
-        elements.push(
-          <p key={index} className="msg-paragraph">
-            {parseInline(line)}
-          </p>
-        );
-      }
-    }
-  });
-
-  if (currentList.length > 0) {
-    elements.push(
-      <ul key="list-end" className="msg-list">
-        {currentList}
-      </ul>
-    );
-  }
-
-  return elements.length > 0 ? elements : text;
-}
 
 export default function FloatingChat({ isOpen, setIsOpen }) {
   const { t, language } = useLanguage();
@@ -66,20 +11,20 @@ export default function FloatingChat({ isOpen, setIsOpen }) {
       text: t('chatInitialGreeting'),
       isEscalated: false,
       isClosed: false,
-      showLeadForm: false
+      escalationChoice: null
     }
   ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [activeLeadMessage, setActiveLeadMessage] = useState('');
 
-  // Lead Form States & Validation
+  // Lead capture form state
   const [leadName, setLeadName] = useState('');
   const [leadPhone, setLeadPhone] = useState('');
   const [leadProgram, setLeadProgram] = useState('Inglés');
   const [leadSubmitted, setLeadSubmitted] = useState(false);
-  const [activeLeadMessage, setActiveLeadMessage] = useState('');
 
-  // Touched and Error states
+  // Real-time input validation states
   const [nameTouched, setNameTouched] = useState(false);
   const [phoneTouched, setPhoneTouched] = useState(false);
   const [nameError, setNameError] = useState('');
@@ -88,36 +33,76 @@ export default function FloatingChat({ isOpen, setIsOpen }) {
   const messagesEndRef = useRef(null);
   const inactivityTimerRef = useRef(null);
 
-  // Validation functions
-  const validateName = (name) => {
-    const trimmed = name.trim();
-    if (!trimmed) {
-      return language === 'es' ? 'El nombre completo es requerido.' : 'Full name is required.';
-    }
-    if (trimmed.length < 3) {
-      return language === 'es' ? 'El nombre debe tener al menos 3 caracteres.' : 'Name must be at least 3 characters.';
-    }
-    if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s'-]+$/.test(trimmed)) {
-      return language === 'es' ? 'El nombre solo debe contener letras.' : 'Name must only contain letters.';
-    }
+  // Client-side validation helpers
+  const validateName = (val) => {
+    const trimmed = val.trim();
+    if (!trimmed) return language === 'es' ? 'El nombre es obligatorio.' : 'Name is required.';
+    if (trimmed.length < 2) return language === 'es' ? 'Debe tener al menos 2 caracteres.' : 'Must be at least 2 characters.';
     return '';
   };
 
-  const validatePhone = (phone) => {
-    const trimmed = phone.trim();
-    if (!trimmed) {
-      return language === 'es' ? 'El número de WhatsApp o teléfono es requerido.' : 'WhatsApp or phone number is required.';
-    }
-    const digitsOnly = trimmed.replace(/\D/g, '');
-    if (digitsOnly.length < 7 || digitsOnly.length > 15) {
-      return language === 'es' 
-        ? 'Ingresa un número válido de 10 dígitos (ej. 300 123 4567).' 
-        : 'Enter a valid phone number (7-15 digits).';
-    }
+  const validatePhone = (val) => {
+    const trimmed = val.trim().replace(/\D/g, '');
+    if (!trimmed) return language === 'es' ? 'El teléfono es obligatorio.' : 'Phone number is required.';
+    if (trimmed.length < 7) return language === 'es' ? 'Ingresa al menos 7 dígitos.' : 'Enter at least 7 digits.';
     return '';
   };
 
-  // Update initial message when language changes if no conversation started
+  // Helper to format bold markdown and linebreaks
+  const formatMessageContent = (content) => {
+    if (!content) return null;
+    const lines = content.split('\n');
+
+    return (
+      <div className="msg-content">
+        {lines.map((line, idx) => {
+          if (!line.trim()) {
+            return <div key={idx} style={{ height: '6px' }} />;
+          }
+
+          if (line.trim().startsWith('- ') || line.trim().startsWith('* ')) {
+            const cleanItem = line.trim().substring(2);
+            return (
+              <li key={idx} className="msg-list-item">
+                {renderFormattedText(cleanItem)}
+              </li>
+            );
+          }
+
+          if (/^\d+\.\s/.test(line.trim())) {
+            const cleanItem = line.trim().replace(/^\d+\.\s/, '');
+            return (
+              <li key={idx} className="msg-list-item" style={{ listStyleType: 'decimal' }}>
+                {renderFormattedText(cleanItem)}
+              </li>
+            );
+          }
+
+          return (
+            <p key={idx} className="msg-paragraph">
+              {renderFormattedText(line)}
+            </p>
+          );
+        })}
+      </div>
+    );
+  };
+
+  const renderFormattedText = (text) => {
+    const parts = text.split(/(\*\*.*?\*\*)/g);
+    return parts.map((part, i) => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        return (
+          <strong key={i} className="msg-bold">
+            {part.slice(2, -2)}
+          </strong>
+        );
+      }
+      return part;
+    });
+  };
+
+  // Update initial greeting when language changes if no conversation exists yet
   useEffect(() => {
     if (messages.length === 1 && messages[0].sender === 'bot') {
       setMessages([
@@ -126,7 +111,7 @@ export default function FloatingChat({ isOpen, setIsOpen }) {
           text: t('chatInitialGreeting'),
           isEscalated: false,
           isClosed: false,
-          showLeadForm: false
+          escalationChoice: null
         }
       ]);
     }
@@ -160,14 +145,16 @@ export default function FloatingChat({ isOpen, setIsOpen }) {
     const userText = input.trim();
     setInput('');
 
-    setMessages((prev) => [
-      ...prev,
+    const newMessages = [
+      ...messages,
       { sender: 'user', text: userText }
-    ]);
+    ];
+
+    setMessages(newMessages);
     setLoading(true);
 
     try {
-      const data = await sendChatMessage(userText, 'web_session_01', language);
+      const data = await sendChatMessage(userText, 'web_session_01', language, messages);
       const isEscalated = data.is_escalated;
       const isClosed = data.is_closed;
 
@@ -178,11 +165,11 @@ export default function FloatingChat({ isOpen, setIsOpen }) {
           text: data.response,
           isEscalated: isEscalated,
           isClosed: isClosed,
-          showLeadForm: isEscalated
+          escalationChoice: isEscalated ? 'pending' : null
         }
       ]);
 
-      // If out-of-scope, schedule 3-minute inactivity follow-up only if not closed
+      // If escalated, record active query for lead form
       if (isEscalated && !isClosed) {
         setActiveLeadMessage(userText);
         inactivityTimerRef.current = setTimeout(() => {
@@ -193,7 +180,7 @@ export default function FloatingChat({ isOpen, setIsOpen }) {
               text: t('chatInactivity'),
               isEscalated: false,
               isClosed: false,
-              showLeadForm: false
+              escalationChoice: null
             }
           ]);
         }, 180000); // 3 Minutes
@@ -204,16 +191,43 @@ export default function FloatingChat({ isOpen, setIsOpen }) {
         {
           sender: 'bot',
           text: language === 'es' 
-            ? 'Ocurrió un error al procesar tu solicitud. Por favor intenta de nuevo.'
+            ? 'Ocurrió un error al procesar tu solicitud. Por favor intenta de nuevo.' 
             : 'An error occurred while processing your request. Please try again.',
           isEscalated: false,
           isClosed: false,
-          showLeadForm: false
+          escalationChoice: null
         }
       ]);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleEscalationDecision = (msgIndex, accepted) => {
+    if (inactivityTimerRef.current) {
+      clearTimeout(inactivityTimerRef.current);
+      inactivityTimerRef.current = null;
+    }
+
+    setMessages((prev) => {
+      const updated = [...prev];
+      if (updated[msgIndex]) {
+        updated[msgIndex] = {
+          ...updated[msgIndex],
+          escalationChoice: accepted ? 'accepted' : 'declined'
+        };
+      }
+      if (!accepted) {
+        updated.push({
+          sender: 'bot',
+          text: t('chatAdvisorDeclined'),
+          isEscalated: false,
+          isClosed: false,
+          escalationChoice: null
+        });
+      }
+      return updated;
+    });
   };
 
   const handleLeadSubmit = async (e) => {
@@ -249,7 +263,7 @@ export default function FloatingChat({ isOpen, setIsOpen }) {
           text: t('chatLeadSuccess', { name: leadName.trim(), phone: leadPhone.trim() }),
           isEscalated: false,
           isClosed: false,
-          showLeadForm: false
+          escalationChoice: null
         }
       ]);
     } catch (err) {
@@ -262,7 +276,7 @@ export default function FloatingChat({ isOpen, setIsOpen }) {
             : '⚠️ There was an issue submitting your details. Please check your connection and try again.',
           isEscalated: false,
           isClosed: false,
-          showLeadForm: false
+          escalationChoice: null
         }
       ]);
     } finally {
@@ -325,7 +339,7 @@ export default function FloatingChat({ isOpen, setIsOpen }) {
                             text: t('chatInitialGreeting'),
                             isEscalated: false,
                             isClosed: false,
-                            showLeadForm: false
+                            escalationChoice: null
                           }
                         ]);
                       }}
@@ -336,9 +350,34 @@ export default function FloatingChat({ isOpen, setIsOpen }) {
                   </div>
                 )}
 
-                {/* Inline Lead Capture Card with Real-Time Validation */}
-                {msg.showLeadForm && !leadSubmitted && index === messages.length - 1 && (
-                  <div className="chat-lead-card fade-in">
+                {/* Escalation Yes/No Confirmation Action Controls */}
+                {msg.isEscalated && msg.escalationChoice === 'pending' && index === messages.length - 1 && (
+                  <div className="chat-escalation-prompt fade-in">
+                    <p className="escalation-prompt-text">{t('chatAdvisorPrompt')}</p>
+                    <div className="escalation-actions-row">
+                      <button 
+                        type="button" 
+                        className="btn-escalation-choice btn-choice-yes"
+                        onClick={() => handleEscalationDecision(index, true)}
+                      >
+                        <Check size={15} />
+                        <span>{t('chatAdvisorYes')}</span>
+                      </button>
+                      <button 
+                        type="button" 
+                        className="btn-escalation-choice btn-choice-no"
+                        onClick={() => handleEscalationDecision(index, false)}
+                      >
+                        <X size={15} />
+                        <span>{t('chatAdvisorNo')}</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Inline Lead Capture Card with Real-Time Validation (Opens when 'Yes' is clicked) */}
+                {msg.isEscalated && msg.escalationChoice === 'accepted' && !leadSubmitted && index === messages.length - 1 && (
+                  <div className="chat-lead-card slide-up">
                     <div className="lead-card-header">
                       <User size={16} className="gold-icon" />
                       <span>{t('chatLeadTitle')}</span>
@@ -364,11 +403,11 @@ export default function FloatingChat({ isOpen, setIsOpen }) {
                             setNameTouched(true);
                             setNameError(validateName(leadName));
                           }}
-                          className={nameTouched && nameError ? 'input-invalid' : (nameTouched && !nameError ? 'input-valid' : '')}
+                          className="lead-input"
                         />
                         {nameTouched && nameError && (
-                          <div className="lead-error-msg slide-up">
-                            <AlertCircle size={13} />
+                          <div className="field-error-msg">
+                            <AlertCircle size={12} />
                             <span>{nameError}</span>
                           </div>
                         )}
@@ -393,11 +432,11 @@ export default function FloatingChat({ isOpen, setIsOpen }) {
                             setPhoneTouched(true);
                             setPhoneError(validatePhone(leadPhone));
                           }}
-                          className={phoneTouched && phoneError ? 'input-invalid' : (phoneTouched && !phoneError ? 'input-valid' : '')}
+                          className="lead-input"
                         />
                         {phoneTouched && phoneError && (
-                          <div className="lead-error-msg slide-up">
-                            <AlertCircle size={13} />
+                          <div className="field-error-msg">
+                            <AlertCircle size={12} />
                             <span>{phoneError}</span>
                           </div>
                         )}
@@ -408,20 +447,27 @@ export default function FloatingChat({ isOpen, setIsOpen }) {
                         <select
                           value={leadProgram}
                           onChange={(e) => setLeadProgram(e.target.value)}
+                          className="lead-select"
                         >
-                          <option value="Inglés">🇬🇧 {t('english')}</option>
-                          <option value="Francés">🇫🇷 {t('french')}</option>
-                          <option value="Portugués">🇧🇷 {t('portuguese')}</option>
+                          <option value="Inglés">🇬🇧 Inglés</option>
+                          <option value="Francés">🇫🇷 Francés</option>
+                          <option value="Portugués">🇧🇷 Portugués</option>
                         </select>
                       </div>
 
-                      <button 
-                        type="submit" 
-                        className="btn-lead-submit" 
-                        disabled={loading}
+                      <button
+                        type="submit"
+                        className="btn-submit-lead"
+                        disabled={loading || (nameTouched && !!nameError) || (phoneTouched && !!phoneError)}
                       >
-                        <CheckCircle size={16} />
-                        <span>{t('chatSubmitLead')}</span>
+                        {loading ? (
+                          <span>Enviando...</span>
+                        ) : (
+                          <>
+                            <Check size={16} />
+                            <span>{t('chatSubmitLead')}</span>
+                          </>
+                        )}
                       </button>
                     </form>
                   </div>

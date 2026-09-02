@@ -111,9 +111,12 @@ const translations = {
     chatLeadTitle: 'Connect with a Personal Advisor',
     chatFullName: 'Your Full Name:',
     chatPhone: 'WhatsApp / Phone Number:',
-    chatProgram: 'Program of Interest:',
     chatSubmitLead: 'Request Direct Contact',
-    chatLeadSuccess: 'Great {name}! Your contact details have been sent to our admissions team. We will contact you shortly on WhatsApp (+57 {phone}).'
+    chatLeadSuccess: 'Great {name}! Your contact details have been sent to our admissions team. We will contact you shortly on WhatsApp (+57 {phone}).',
+    chatAdvisorPrompt: 'Would you like us to connect you with an admissions advisor to resolve your personalized inquiry?',
+    chatAdvisorYes: 'Yes, connect with advisor',
+    chatAdvisorNo: 'No, thanks',
+    chatAdvisorDeclined: 'Understood! If you have any other questions or inquiries about our programs, I will be glad to help you. 😊'
   },
 
   es: {
@@ -228,7 +231,11 @@ const translations = {
     chatPhone: 'Número de WhatsApp / Teléfono:',
     chatProgram: 'Programa de Interés:',
     chatSubmitLead: 'Solicitar Contacto Directo',
-    chatLeadSuccess: '¡Excelente {name}! Tus datos fueron enviados a nuestro equipo de admisiones. Te contactaremos en breve por WhatsApp (+57 {phone}).'
+    chatLeadSuccess: '¡Excelente {name}! Tus datos fueron enviados a nuestro equipo de admisiones. Te contactaremos en breve por WhatsApp (+57 {phone}).',
+    chatAdvisorPrompt: '¿Deseas que te comuniquemos con un asesor de admisiones para resolver tu consulta personalizada?',
+    chatAdvisorYes: 'Sí, conectar con asesor',
+    chatAdvisorNo: 'No, gracias',
+    chatAdvisorDeclined: '¡De acuerdo! Si tienes alguna otra duda o consulta sobre nuestros programas, con mucho gusto aquí estaré para colaborarte. 😊'
   }
 };
 
