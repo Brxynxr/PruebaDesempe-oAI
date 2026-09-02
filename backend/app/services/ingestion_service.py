@@ -66,13 +66,24 @@ class IngestionService:
             text = doc["content"]
             source = doc["source"]
 
-            # Split primarily by Markdown headers (## or #)
-            sections = re.split(r'\n(?=#{1,3}\s)', text)
-            
+            # Extract main document title if present (# Title)
+            main_title = ""
+            title_match = re.match(r'^#\s+(.+)\n', text)
+            if title_match:
+                main_title = title_match.group(1).strip()
+                text = text[title_match.end():].strip()
+
+            # Split primarily by sub-headers (## or ###)
+            sections = re.split(r'\n(?=#{2,3}\s)', text)
+
             for section in sections:
                 section_text = section.strip()
                 if not section_text:
                     continue
+
+                # Prepend main document title context to section if not already present
+                if main_title and not section_text.startswith("#"):
+                    section_text = f"# {main_title}\n\n{section_text}"
 
                 # If the section exceeds the maximum size, split by paragraphs
                 if len(section_text) > self.chunk_size:
