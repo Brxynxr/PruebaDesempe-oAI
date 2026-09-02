@@ -26,8 +26,8 @@ FALLBACK_MODELS = ["openai/gpt-oss-20b", "qwen/qwen3.6-27b", "openai/gpt-oss-120
 TEMPERATURE = 0.15
 MAX_TOKENS = 900
 MAX_CONTINUATIONS = 1  # at most one continuation call if still truncated
-RETRIEVAL_TOP_K = 8    # fetch more candidates, then rerank down to CONTEXT_TOP_K
-CONTEXT_TOP_K = 6      # how many chunks actually go into the prompt (unchanged)
+RETRIEVAL_TOP_K = 12   # fetch more candidates, then rerank down to CONTEXT_TOP_K
+CONTEXT_TOP_K = 8     # include up to 8 rich chunks into the prompt for maximum coverage
 GENERATION_ATTEMPTS = 3  # was 2 attempts, and only retried on RateLimitError
 
 # ==========================================================================
