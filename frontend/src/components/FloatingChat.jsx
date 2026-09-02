@@ -425,7 +425,7 @@ export default function FloatingChat({ isOpen, setIsOpen }) {
                         <input
                           type="tel"
                           required
-                          placeholder="Ej. 3001234567 o +57 300 123 4567"
+                          placeholder={t('chatPhonePlaceholder')}
                           value={leadPhone}
                           onChange={(e) => {
                             const val = e.target.value;

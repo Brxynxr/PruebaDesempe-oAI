@@ -2015,31 +2015,45 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   border-color: #2e2924;
 }
 
+.btn-submit-lead,
 .btn-lead-submit {
   width: 100%;
-  background: var(--pharaoh-black);
-  color: var(--egyptian-gold);
-  border: 1px solid var(--egyptian-gold);
-  padding: 0.65rem;
+  background: var(--gradient-gold) !important;
+  color: #12100e !important;
+  border: 1px solid #d4af37 !important;
+  padding: 0.65rem 1rem;
   min-height: 44px;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-full);
   font-size: 0.85rem;
   font-weight: 800;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.4rem;
-  margin-top: 0.35rem;
+  gap: 0.45rem;
+  margin-top: 0.5rem;
+  box-shadow: 0 3px 12px rgba(212, 175, 55, 0.35);
   transition: all var(--transition-fast);
 }
 
-.btn-lead-submit:hover {
-  background: #2b2620;
+.btn-submit-lead:hover:not(:disabled),
+.btn-lead-submit:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 5px 16px rgba(212, 175, 55, 0.55);
+  filter: brightness(1.04);
 }
 
-.btn-lead-submit:active {
-  transform: scale(0.97);
+.btn-submit-lead:active:not(:disabled),
+.btn-lead-submit:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.btn-submit-lead:disabled,
+.btn-lead-submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
 }
 
 .chat-input-wrapper,
