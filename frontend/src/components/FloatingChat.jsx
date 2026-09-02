@@ -154,7 +154,11 @@ export default function FloatingChat({ isOpen, setIsOpen }) {
     setLoading(true);
 
     try {
-      const data = await sendChatMessage(userText, 'web_session_01', language, messages);
+      const cleanHistory = messages.map((m) => ({
+        sender: m.sender,
+        text: m.text
+      }));
+      const data = await sendChatMessage(userText, 'web_session_01', language, cleanHistory);
       const isEscalated = data.is_escalated;
       const isClosed = data.is_closed;
 
