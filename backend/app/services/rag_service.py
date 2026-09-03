@@ -21,8 +21,16 @@ logger = logging.getLogger("lumina.rag")
 # covering multiple levels/modalities/prices with bullet points, causing
 # responses to be cut off mid-sentence. Combined with truncation detection
 # below, this is the main fix for "incomplete answer" reports.
-MODEL_NAME = "openai/gpt-oss-20b"
-FALLBACK_MODELS = ["openai/gpt-oss-20b", "qwen/qwen3.6-27b", "openai/gpt-oss-120b"]
+MODEL_NAME = "openai/gpt-oss-120b"
+# Reordered: this list was ["gpt-oss-20b", "qwen/qwen3.6-27b", "openai/gpt-oss-120b"] --
+# meaning the SMALLER, weaker model ran first on every request, and the second
+# retry hit "qwen/qwen3.6-27b", which Groq serves as a PREVIEW model (explicitly
+# not meant for production -- can be discontinued without notice). The best,
+# production-grade model (120b) only got used on the *third* attempt. That
+# mismatch between "primary" and "best" model is a very plausible source of
+# inconsistent answer quality. Now: best model first, fast production model as
+# fallback, no preview models in the loop.
+FALLBACK_MODELS = ["openai/gpt-oss-120b", "openai/gpt-oss-20b"]
 TEMPERATURE = 0.15
 MAX_TOKENS = 900
 MAX_CONTINUATIONS = 1  # at most one continuation call if still truncated

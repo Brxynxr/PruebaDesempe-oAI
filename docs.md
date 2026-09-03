@@ -82,11 +82,11 @@ Para resolver este desafío de manera profesional, escalable y segura, se constr
 * **Razonamiento técnico:** La arquitectura LPU (*Language Processing Unit*) de Groq entrega tiempos de primer token (*Time To First Token - TTFT*) inferiores a 300 ms, compatibilidad 100% con la API estándar de OpenAI Chat Completions y un nivel de seguimiento de instrucciones RAG excepcional con temperatura 0.2.
 
 ### 2.3 Elección de la Base de Datos Vectorial y Embeddings: ChromaDB + Google Gemini Embeddings
-* **Opción elegida:** ChromaDB con almacenamiento persistente local en disco (`./chroma_data`) alimentado por la API de **Google Gemini Embeddings (`text-embedding-004`)** mediante la clase personalizada `GeminiEmbeddingFunction`.
+* **Opción elegida:** ChromaDB con almacenamiento persistente local en disco (`./chroma_data`) alimentado por la API de **Google Gemini Embeddings (`gemini-embedding-001`)** mediante la clase personalizada `GeminiEmbeddingFunction`.
 * **Alternativas consideradas y descartadas:**
   * *Pinecone:* Descartado por ser un servicio SaaS propietario dependiente de conexión a internet constante, latencias de red añadidas y costos recurrentes de suscripción.
   * *FAISS (Facebook AI Similarity Search):* Aunque es extremadamente rápido, requiere desarrollar manualmente la capa de persistencia de metadatos, serialización a disco y sincronización de índices.
-* **Razonamiento técnico:** ChromaDB se ejecuta embebido dentro del mismo proceso del backend, no requiere bases de datos externas adicionales, mantiene los metadatos de los archivos Markdown asociados a cada fragmento y persiste automáticamente el índice HNSW en disco. La integración con Gemini Embeddings (`text-embedding-004`, 768 dimensiones) ofrece alta precisión en búsquedas semánticas multilingües (Español e Inglés) con un fallback automático al modelo local en entornos de desarrollo.
+* **Razonamiento técnico:** ChromaDB se ejecuta embebido dentro del mismo proceso del backend, no requiere bases de datos externas adicionales, mantiene los metadatos de los archivos Markdown asociados a cada fragmento y persiste automáticamente el índice HNSW en disco. La integración con Gemini Embeddings (`gemini-embedding-001`, 768 dimensiones) ofrece alta precisión en búsquedas semánticas multilingües (Español e Inglés) con un fallback automático al modelo local en entornos de desarrollo.
 
 ### 2.4 Rol de n8n: Middleware de Integración Omnicanal
 * **Opción elegida:** n8n contenerizado actuando como enrutador y conector de mensajería externa.

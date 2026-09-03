@@ -13,7 +13,13 @@ class GeminiEmbeddingFunction(EmbeddingFunction):
     Optimized for multilingual (Spanish & English) semantic similarity search.
     Falls back gracefully to ChromaDB's default embedding model when GEMINI_API_KEY is not set.
     """
-    def __init__(self, api_key: Optional[str] = None, model_name: str = "text-embedding-004"):
+    def __init__(self, api_key: Optional[str] = None, model_name: str = "gemini-embedding-001"):
+        # NOTE: "text-embedding-004" (the previous default here) was shut down by
+        # Google on January 14, 2026. Every embedding call with that name was
+        # silently failing and falling through to an all-zero vector (see the
+        # __call__ fallback fix below) -- meaning semantic search was effectively
+        # random for every query. "gemini-embedding-001" is the current stable
+        # multilingual replacement.
         self.api_key = api_key or settings.GEMINI_API_KEY
         self.model_name = model_name
         self._client = None
@@ -24,13 +30,20 @@ class GeminiEmbeddingFunction(EmbeddingFunction):
                 self._client = genai.Client(api_key=self.api_key)
             except Exception as e:
                 logger.warning("Google GenAI client initialization failed: %s", str(e))
-        
-        if not self._client:
-            try:
-                from chromadb.utils.embedding_functions import DefaultEmbeddingFunction
-                self._default_ef = DefaultEmbeddingFunction()
-            except Exception as e:
-                logger.warning("Default embedding function fallback initialization failed: %s", str(e))
+
+        # Previously this default embedding function was only created when the
+        # Gemini client failed to INITIALIZE (e.g. missing/invalid key). If the
+        # client initialized fine but a later API call failed (wrong model name,
+        # network error, quota), there was no fallback object available and
+        # __call__ returned [0.0]*768 -- meaningless embeddings for every chunk
+        # and every query, causing near-random retrieval. Always prepare the
+        # local fallback so any runtime failure degrades gracefully instead of
+        # returning zero vectors.
+        try:
+            from chromadb.utils.embedding_functions import DefaultEmbeddingFunction
+            self._default_ef = DefaultEmbeddingFunction()
+        except Exception as e:
+            logger.warning("Default embedding function fallback initialization failed: %s", str(e))
 
     def name(self) -> str:
         return "gemini-embedding-004" if self._client else "default-fallback"
@@ -102,7 +115,7 @@ class VectorStore:
             self.client.delete_collection(name=self.collection_name)
         except Exception:
             pass
-        self.collection = self.client.get_or_create_collection(
+        self.collection = self.collection_name and self.client.get_or_create_collection(
             name=self.collection_name,
             embedding_function=self.embedding_function
         )
