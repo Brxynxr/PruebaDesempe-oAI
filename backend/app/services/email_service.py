@@ -133,9 +133,10 @@ class EmailService:
             logger.error("[WhatsApp Automation] Dispatch error: %s", str(e))
 
         # 2. Email Subject & Body
-        subject = f"Nuevo Lead de Estudiante: {student_name} - {program} (Sesión: {session_id})"
+        subject = f"⚠️ Solicitud de Atención Pendiente: {student_name} - {program} (Sesión: {session_id})"
 
-        plain_body = f"""Se ha recibido una solicitud de contacto directo de un estudiante.
+        plain_body = f"""Se ha registrado una solicitud de atención personalizada (Estado: PENDIENTE).
+Por favor entra al Panel de Agentes de Academia Lumina para reclamar la conversación y atender al estudiante en vivo.
 
 DATOS DEL ESTUDIANTE:
 --------------------------------------------------
@@ -145,7 +146,8 @@ DATOS DEL ESTUDIANTE:
 - Consulta / Inquietud: {clean_user_msg}
 - ID de Sesión: {session_id}
 --------------------------------------------------
-Enlace directo de contacto para el Asesor: {student_whatsapp_url}
+Acceso directo al Panel de Agentes: https://academialumina.edu.co/admin/login
+Enlace secundario de WhatsApp: {student_whatsapp_url}
 """
 
         html_body = f"""<!DOCTYPE html>
@@ -153,7 +155,7 @@ Enlace directo de contacto para el Asesor: {student_whatsapp_url}
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nuevo Lead - Academia Lumina</title>
+    <title>Atención Pendiente - Academia Lumina</title>
 </head>
 <body style="margin: 0; padding: 0; background-color: #fdfbf7; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #12100e;">
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #fdfbf7; padding: 30px 15px;">
@@ -163,7 +165,7 @@ Enlace directo de contacto para el Asesor: {student_whatsapp_url}
                     <!-- Encabezado -->
                     <tr>
                         <td style="background-color: #12100e; padding: 28px 30px; text-align: center; border-bottom: 2px solid #d4af37;">
-                            <span style="background-color: #fef9c3; color: #854d0e; font-size: 11px; font-weight: 800; text-transform: uppercase; padding: 5px 14px; border-radius: 20px; letter-spacing: 1px; display: inline-block; margin-bottom: 10px;">NUEVA SOLICITUD DE ASESORÍA</span>
+                            <span style="background-color: #fef9c3; color: #854d0e; font-size: 11px; font-weight: 800; text-transform: uppercase; padding: 5px 14px; border-radius: 20px; letter-spacing: 1px; display: inline-block; margin-bottom: 10px;">CONVERSACIÓN PENDIENTE EN PANEL</span>
                             <h1 style="color: #ffffff; margin: 0; font-size: 22px; font-weight: 900; letter-spacing: -0.5px;">Academia Lumina</h1>
                         </td>
                     </tr>
@@ -171,7 +173,7 @@ Enlace directo de contacto para el Asesor: {student_whatsapp_url}
                     <tr>
                         <td style="padding: 30px; background-color: #ffffff;">
                             <p style="font-size: 15px; line-height: 1.6; color: #4b5563; margin-top: 0;">
-                                Se ha registrado un estudiante en el chat web que solicita atención personalizada por WhatsApp.
+                                Se ha escalado una conversación a estado <strong>PENDIENTE</strong>. Por favor entra al panel de agentes para reclamarla y atender al estudiante en vivo.
                             </p>
                             
                             <!-- Caja de Datos del Estudiante -->

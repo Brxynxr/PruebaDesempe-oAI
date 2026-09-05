@@ -4,6 +4,7 @@ import time
 import logging
 import urllib.parse
 import hashlib
+import unicodedata
 from typing import Dict, Any, List, Optional
 from groq import Groq, RateLimitError
 from app.core.config import settings
@@ -404,12 +405,13 @@ class RAGService:
     """Core RAG service integrating ChromaDB vector storage, memory TTL cache, and Groq LLM inference."""
 
     def __init__(self, vector_store: Optional[VectorStore] = None):
-        """Initialize Groq client and ChromaDB vector store."""
         self.vector_store = vector_store or VectorStore(collection_name="academia_lumina_kb")
-        self.groq_api_key = settings.GROQ_API_KEY
-        self.client = None
-        if self.groq_api_key and not self.groq_api_key.startswith("gsk_your"):
-            self.client = Groq(api_key=self.groq_api_key)
+        # Support single or multiple comma-separated keys for rate-limit rotation
+        raw_keys = settings.GROQ_API_KEYS or settings.GROQ_API_KEY
+        self.groq_api_keys = [k.strip() for k in raw_keys.split(",") if k.strip() and not k.strip().startswith("gsk_your")]
+        self.clients = [Groq(api_key=k) for k in self.groq_api_keys] if self.groq_api_keys else []
+        self.client = self.clients[0] if self.clients else None
+        self._key_index = 0
 
     def generate_response(
         self,
@@ -452,6 +454,40 @@ class RAGService:
                 sources=[],
                 session_id=session_id
             )
+
+        # 0.2 Token optimization: Short-circuit for unambiguous out-of-scope inquiries (saves LLM call)
+        msg_lower = user_message.lower()
+        billing_terms = ["doble cobro", "cobro doble", "me cobraron dos veces", "charged twice", "devolucion de dinero", "devolución de mi dinero", "reembolso de mi dinero"]
+        amenity_terms = ["parqueadero", "estacionamiento", "parking", "cafeteria", "cafetería", "intercambio cultural a canada", "intercambio a canada", "intercambio a suiza", "intercambio a alemania", "descuento hermanos", "descuento para hermanos"]
+        
+        is_billing = any(b in msg_lower for b in billing_terms)
+        is_amenity = any(a in msg_lower for a in amenity_terms)
+        
+        if is_billing or is_amenity:
+            if is_billing:
+                sc_text = (
+                    "I am very sorry for the issue with your payment. To review your case immediately and arrange a solution, I will connect you with a human admissions advisor."
+                    if lang_code == "en" else
+                    "Lamento mucho el inconveniente con tu pago. Para revisar tu caso de inmediato y gestionar la solución, te voy a conectar con un asesor humano de admisiones."
+                )
+            else:
+                sc_text = (
+                    "I do not have that specific information in the official records. To confirm this detail for you, I will connect you with a human admissions advisor."
+                    if lang_code == "en" else
+                    "No cuento con esa información específica en los registros oficiales. Para confirmarte este detalle, te voy a conectar con un asesor humano de admisiones."
+                )
+            wa_link = _build_whatsapp_link(user_message, lang_code)
+            sc_resp = ChatResponse(
+                response=sc_text,
+                is_escalated=True,
+                is_closed=False,
+                whatsapp_link=wa_link,
+                sources=[],
+                session_id=session_id
+            )
+            response_cache.set(user_message, sc_resp)
+            metrics_service.record_query(is_cached=False, is_escalated=True, tokens=0)
+            return sc_resp
 
         # 1. Check TTL cache (incorporate history hash to prevent cross-conversation cache pollution)
         history_str = "|".join([f"{h.get('sender') or h.get('role')}:{h.get('text') or h.get('content')}" for h in (history or [])[-4:]])
@@ -506,10 +542,21 @@ class RAGService:
                 wa_link = _build_whatsapp_link(user_message, lang_code)
             else:
                 best_match = search_results[0]['content'] if search_results else 'Consulta de programas.'
-                for res in search_results:
-                    if any(word in res['content'].lower() for word in user_message.lower().split()):
-                        best_match = res['content']
-                        break
+                
+                def _strip_accents(s: str) -> str:
+                    return ''.join(c for c in unicodedata.normalize('NFD', s) if unicodedata.category(c) != 'Mn').lower()
+
+                stop_words = {'los', 'las', 'unos', 'unas', 'para', 'con', 'que', 'como', 'tiene', 'tienen', 'the', 'and', 'for', 'with'}
+                q_words = {w for w in re.findall(r'\w{3,}', _strip_accents(user_message)) if w not in stop_words}
+
+                if search_results and q_words:
+                    def _score_chunk(chunk: Dict[str, Any]) -> float:
+                        c_words = set(re.findall(r'\w{3,}', _strip_accents(chunk.get('content', ''))))
+                        overlap = len(q_words & c_words)
+                        sim = 1.0 - chunk.get('distance', 0.0)
+                        return (overlap * 2.0) + sim
+
+                    best_match = max(search_results, key=_score_chunk)['content']
 
                 clean_chunk = re.sub(r'^#{1,3}\s+.*\n?', '', best_match, flags=re.MULTILINE).strip()
                 resp_text = _sanitize_pii(clean_chunk)
@@ -531,8 +578,9 @@ class RAGService:
         backoff_seconds = 0.3
         for attempt in range(GENERATION_ATTEMPTS):
             current_model = FALLBACK_MODELS[attempt % len(FALLBACK_MODELS)]
+            current_client = self.clients[(self._key_index + attempt) % len(self.clients)] if self.clients else self.client
             try:
-                chat_completion = self.client.chat.completions.create(
+                chat_completion = current_client.chat.completions.create(
                     messages=messages,
                     model=current_model,
                     temperature=TEMPERATURE,
@@ -541,6 +589,9 @@ class RAGService:
                 choice = chat_completion.choices[0]
                 raw_response = (choice.message.content or "").strip()
                 finish_reason = getattr(choice, "finish_reason", None)
+                total_tokens = 0
+                if hasattr(chat_completion, "usage") and chat_completion.usage:
+                    total_tokens += getattr(chat_completion.usage, "total_tokens", 0) or 0
 
                 # Empty/too-short completions are treated as a transient failure and retried,
                 # same as rate limits used to be the only retried case.
@@ -555,12 +606,14 @@ class RAGService:
                         {"role": "assistant", "content": raw_response},
                         {"role": "user", "content": "Continue exactly where you left off. Do not repeat any part of the previous text, and do not restart the answer."}
                     ]
-                    continuation = self.client.chat.completions.create(
+                    continuation = current_client.chat.completions.create(
                         messages=continuation_messages,
                         model=current_model,
                         temperature=TEMPERATURE,
                         max_tokens=MAX_TOKENS
                     )
+                    if hasattr(continuation, "usage") and continuation.usage:
+                        total_tokens += getattr(continuation.usage, "total_tokens", 0) or 0
                     cont_choice = continuation.choices[0]
                     extra_text = (cont_choice.message.content or "").strip()
                     raw_response = f"{raw_response} {extra_text}".strip()
@@ -582,10 +635,13 @@ class RAGService:
                 )
 
                 response_cache.set(cache_key, chat_response)
-                metrics_service.record_query(is_cached=False, is_escalated=is_escalated, tokens=350)
+                metrics_service.record_query(is_cached=False, is_escalated=is_escalated, tokens=total_tokens)
                 return chat_response
 
-            except RateLimitError:
+            except RateLimitError as rle:
+                logger.warning("Groq RateLimitError on attempt %d: %s. Rotating API key...", attempt + 1, str(rle))
+                if self.clients:
+                    self._key_index = (self._key_index + 1) % len(self.clients)
                 if attempt < GENERATION_ATTEMPTS - 1:
                     time.sleep(backoff_seconds)
                     backoff_seconds *= 2

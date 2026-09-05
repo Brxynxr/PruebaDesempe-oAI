@@ -1,58 +1,68 @@
-# Guía de Importación y Configuración del Workflow n8n - Academia Lumina
+# Guía de Importación y Configuración de Workflows n8n - Academia Lumina
 
-Este directorio contiene el flujo automatizado oficial de **n8n** (`workflow.json`) diseñado como un **Router Puro** para integrar la recepción de mensajes, el procesamiento con el backend RAG en FastAPI y el envío de notificaciones por correo electrónico en caso de escalamiento a asesor humano.
-
----
-
-## 1. Arquitectura del Flujo n8n
-
-El flujo automatizado se compone de 5 nodos conectados secuencialmente:
-
-1. **Webhook - Recepción de Consulta**:
-   - Escucha peticiones `POST` en `/webhook/chat`.
-   - Recibe la pregunta enviada desde el formulario o widget de chat web.
-2. **HTTP Request - Router FastAPI RAG**:
-   - Reenvía el mensaje al backend FastAPI (`POST http://backend:8000/api/v1/chat` en Docker o `http://localhost:8000/api/v1/chat` en local).
-   - Envía automáticamente la cabecera de autenticación `X-API-Key: lumina_secret_key_2026`.
-3. **¿Requiere Escalamiento? (Nodo IF)**:
-   - Evalúa el parámetro booleano `is_escalated`.
-   - Si `is_escalated == true`, activa la rama de escalamiento.
-4. **Notificación Correo Interno Admisiones**:
-   - En la rama de escalamiento, envía un correo automático a `bmegami7@gmail.com` desde `breynermanga07@gmail.com` con el resumen de la consulta y el enlace a WhatsApp.
-5. **Respuesta al Cliente (Respond to Webhook)**:
-   - Retorna la respuesta generada al usuario final con código HTTP 200.
+Este directorio contiene los flujos de automatización oficiales de **n8n** diseñados para operar de forma integrada con el backend RAG en FastAPI de **Academia Lumina AI**.
 
 ---
 
-## 2. Instrucciones para Importar en n8n
+## 1. Inventario de Workflows
 
-1. Abre tu panel de control de n8n (local en `http://localhost:5678` o en la nube).
-2. Haz clic en **Workflows** -> **Import from File**.
-3. Selecciona el archivo `n8n/workflow.json`.
-4. Configura las credenciales SMTP para el nodo de envío de correo en `Notificación Correo Interno Admisiones`.
-5. Activa el workflow haciendo clic en el switch **Active** o **Publish**.
+### 📁 1. Router de Consultas y Escalamiento (`workflow.json`)
+* **Tipo de Trigger**: Webhook (`POST /webhook/chat`)
+* **Propósito**: Actúa como punto de entrada (o pasarela) para consultas de clientes. Reenvía el mensaje al backend (`POST http://backend:8000/api/v1/chat`), evalúa si la respuesta requirió escalamiento a humano (`is_escalated == true`), envía una alerta por email a admisiones si es el caso, y responde al webhook con la respuesta RAG estructurada.
+
+### 📁 2. Monitor de SLA de Atención Humana (`workflow_sla.json`)
+* **Tipo de Trigger**: Schedule / Cron (Cada 5 minutos)
+* **Propósito**: Consulta al endpoint administrativo `GET http://backend:8000/api/v1/admin/conversations/sla/breached?threshold_minutes=10` con cabecera `X-API-Key`. Si hay conversaciones en cola de espera pendientes por más de 10 minutos sin ser tomadas por un asesor, dispara un correo de alerta de alta prioridad a los supervisores con el conteo y las sesiones afectadas.
+
+### 📁 3. Reporte Diario Ejecutivo de Métricas (`workflow_reportes.json`)
+* **Tipo de Trigger**: Schedule / Cron (Diario a las 8:00 AM)
+* **Propósito**: Consume el endpoint `GET http://backend:8000/api/v1/metrics` con cabecera `X-API-Key`. Compila un informe ejecutivo con el total de consultas, tasa de aciertos de caché semántico, tasa de escalamiento a humanos, latencia promedio y total de tokens consumidos/costo estimado en USD, despachándolo por correo al equipo directivo.
 
 ---
 
-## 3. Ejemplo de Prueba con cURL
+## 2. Variables de Entorno en n8n
 
-Puedes probar el Webhook de n8n ejecutando el siguiente comando en tu terminal:
+Para el correcto funcionamiento en Docker o producción, asegúrate de configurar las siguientes variables de entorno en el contenedor o instancia de n8n:
 
+| Variable | Descripción | Valor por Defecto / Ejemplo |
+|---|---|---|
+| `BACKEND_API_KEY` | API Key secreta para autenticar peticiones contra el backend | `lumina_secret_key_2026` |
+| `SMTP_SENDER_EMAIL` | Remitente del servidor de correo | `admissions@academialumina.edu.co` |
+| `ESCALATION_EMAIL` | Destinatario de alertas y reportes | `supervisors@academialumina.edu.co` |
+
+---
+
+## 3. Instrucciones de Importación en n8n
+
+1. Accede a tu instancia de n8n (ej. `http://localhost:5678` en local o tu URL en la nube).
+2. Ve a la sección **Workflows**.
+3. Haz clic en el menú contextual (tres puntos) o botón **Import from File**.
+4. Selecciona cualquiera de los tres archivos (`workflow.json`, `workflow_sla.json` o `workflow_reportes.json`).
+5. Configura las credenciales de tu servicio de correo (SMTP, Gmail, SendGrid u otro) en los nodos de envío de email correspondientes.
+6. Activa el workflow con el interruptor **Active** / **Publish**.
+
+---
+
+## 4. Pruebas Rápidas con cURL
+
+### Prueba de Webhook de Chat:
 ```bash
 curl -X POST http://localhost:5678/webhook/chat \
   -H "Content-Type: application/json" \
   -d '{
-    "message": "¿Tienen programas de intercambio cultural a Canadá?",
-    "session_id": "sesion_demo_01"
+    "message": "¿Cuáles son los requisitos de admisión para el diplomado en IA?",
+    "session_id": "test_n8n_01"
   }'
 ```
 
-**Respuesta Esperada**:
-```json
-{
-  "response": "No cuento con información sobre la presencia o habilitación del tema solicitado en nuestros registros oficiales. Si deseas atención personalizada, comunícate con uno de nuestros asesores por WhatsApp mediante el siguiente botón.",
-  "is_escalated": true,
-  "whatsapp_link": "https://wa.me/573247836387",
-  "session_id": "sesion_demo_01"
-}
+### Prueba de Endpoint SLA en Backend:
+```bash
+curl -X GET "http://localhost:8000/api/v1/admin/conversations/sla/breached?threshold_minutes=10" \
+  -H "X-API-Key: lumina_secret_key_2026"
+```
+
+### Prueba de Endpoint de Métricas en Backend:
+```bash
+curl -X GET "http://localhost:8000/api/v1/metrics" \
+  -H "X-API-Key: lumina_secret_key_2026"
 ```

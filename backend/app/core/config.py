@@ -23,8 +23,12 @@ class Settings(BaseSettings):
     VERSION: str = "1.0.0"
     ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development")
     
+    # Database Configuration (Configurable for SQLite, PostgreSQL, etc.)
+    DATABASE_URL: str = os.getenv("DATABASE_URL", "")
+
     # API Keys and Security
     GROQ_API_KEY: str = os.getenv("GROQ_API_KEY", "")
+    GROQ_API_KEYS: str = os.getenv("GROQ_API_KEYS", os.getenv("GROQ_API_KEY", ""))
     GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
     BACKEND_API_KEY: str = os.getenv("BACKEND_API_KEY", "lumina_dev_api_key_2026")
     RATE_LIMIT_PER_MINUTE: str = os.getenv("RATE_LIMIT_PER_MINUTE", "10/minute")
@@ -38,6 +42,13 @@ class Settings(BaseSettings):
     WHATSAPP_NUMBER: str = os.getenv("WHATSAPP_NUMBER", "+57 324 783 6387")
     WHATSAPP_URL: str = os.getenv("WHATSAPP_URL", "https://wa.me/573247836387")
     ESCALATION_EMAIL: str = os.getenv("ESCALATION_EMAIL", "admissions@academialumina.edu.co")
+
+    # Admin Authentication & JWT Settings
+    ADMIN_USERNAME: str = os.getenv("ADMIN_USERNAME", "admin")
+    ADMIN_PASSWORD: str = os.getenv("ADMIN_PASSWORD", "LuminaAdmin2026!")
+    JWT_SECRET_KEY: str = os.getenv("JWT_SECRET_KEY", "lumina_jwt_secret_key_change_in_production_2026")
+    JWT_ALGORITHM: str = os.getenv("JWT_ALGORITHM", "HS256")
+    JWT_EXPIRE_MINUTES: int = int(os.getenv("JWT_EXPIRE_MINUTES", "480"))
 
     # SMTP Server configuration for lead notifications
     SMTP_HOST: str = os.getenv("SMTP_HOST", "smtp.gmail.com")

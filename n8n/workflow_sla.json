@@ -1,0 +1,136 @@
+{
+  "name": "Academia Lumina - Monitor SLA y Alerta de Leads Abandonados",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 5
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        250,
+        300
+      ],
+      "id": "schedule-trigger-sla",
+      "name": "Cada 5 Minutos"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "http://backend:8000/api/v1/admin/conversations/sla/breached",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "threshold_minutes",
+              "value": "10"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "={{ $env.BACKEND_API_KEY || 'lumina_dev_api_key_2026' }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        480,
+        300
+      ],
+      "id": "http-get-sla-breached",
+      "name": "Consultar Conversaciones Incumpliendo SLA"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{ $json.count }}",
+              "operation": "larger",
+              "value2": 0
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        700,
+        300
+      ],
+      "id": "if-sla-breached",
+      "name": "¿Hay Leads en Riesgo (>10 min)?"
+    },
+    {
+      "parameters": {
+        "fromEmail": "={{ $env.SMTP_SENDER_EMAIL || 'admissions@academialumina.edu.co' }}",
+        "toEmail": "={{ $env.ESCALATION_EMAIL || 'admissions@academialumina.edu.co' }}",
+        "subject": "=🚨 ALERTA CRÍTICA: {{ $json.count }} Lead(s) esperando atención por más de 10 min - Academia Lumina",
+        "text": "=ALERTA DE SLA DE ATENCIÓN HUMANA\n\nSe han detectado {{ $json.count }} conversaciones en estado pendiente sin asignar a ningún asesor por más de {{ $json.threshold_minutes }} minutos.\n\nPor favor ingresar de inmediato al Panel de Administración de Academia Lumina para reclamar y atender a los estudiantes:\nhttp://localhost:3000/admin\n\nDetalle de sesiones afectadas:\n{{ JSON.stringify($json.breached_conversations, null, 2) }}\n\n--\nSistema de Monitoreo Automático Academia Lumina AI",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [
+        920,
+        250
+      ],
+      "id": "email-sla-alert",
+      "name": "Enviar Alerta SLA a Supervisores"
+    }
+  ],
+  "connections": {
+    "Cada 5 Minutos": {
+      "main": [
+        [
+          {
+            "node": "Consultar Conversaciones Incumpliendo SLA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consultar Conversaciones Incumpliendo SLA": {
+      "main": [
+        [
+          {
+            "node": "¿Hay Leads en Riesgo (>10 min)?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Hay Leads en Riesgo (>10 min)?": {
+      "main": [
+        [
+          {
+            "node": "Enviar Alerta SLA a Supervisores",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {}
+}

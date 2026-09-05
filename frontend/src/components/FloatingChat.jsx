@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { BrainCircuit, X, Send, Bot, User, Check, AlertCircle } from 'lucide-react';
-import { sendChatMessage, sendLeadInfo } from '../services/api';
+import { BrainCircuit, X, Send, Bot, User, Check, AlertCircle, Headphones, Sparkles, MessageSquare } from 'lucide-react';
+import { sendChatMessage, sendLeadInfo, WS_BASE_URL } from '../services/api';
 import { useLanguage } from '../context/LanguageContext';
 
 export default function FloatingChat({ isOpen, setIsOpen }) {
@@ -17,6 +17,19 @@ export default function FloatingChat({ isOpen, setIsOpen }) {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [activeLeadMessage, setActiveLeadMessage] = useState('');
+  const [sessionId] = useState(() => {
+    let id = sessionStorage.getItem('lumina_session_id');
+    if (!id) {
+      id = 'session_' + Math.random().toString(36).substring(2, 11) + '_' + Date.now().toString(36);
+      sessionStorage.setItem('lumina_session_id', id);
+    }
+    return id;
+  });
+
+  // Live Agent & WebSocket State
+  const [conversationState, setConversationState] = useState('bot'); // 'bot' | 'pendiente' | 'en_atencion' | 'resuelto'
+  const [assignedAgent, setAssignedAgent] = useState(null);
+  const socketRef = useRef(null);
 
   // Lead capture form state
   const [leadName, setLeadName] = useState('');
@@ -102,6 +115,69 @@ export default function FloatingChat({ isOpen, setIsOpen }) {
     });
   };
 
+  // WEBSOCKET: Real-time bidirectional connection with backend and agents
+  useEffect(() => {
+    let ws;
+    try {
+      ws = new WebSocket(`${WS_BASE_URL}/ws/chat/${sessionId}`);
+      socketRef.current = ws;
+
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === 'session_status') {
+            setConversationState(data.estado || 'bot');
+            if (data.agente_asignado) setAssignedAgent(data.agente_asignado);
+          } else if (data.type === 'agent_connected') {
+            setConversationState('en_atencion');
+            setAssignedAgent(data.agent_name);
+            setMessages((prev) => [
+              ...prev,
+              {
+                sender: 'system',
+                text: data.message || `🎧 El asesor ${data.agent_name} se ha unido al chat.`,
+                isEscalated: false,
+                isClosed: false
+              }
+            ]);
+          } else if (data.type === 'agent_message') {
+            setMessages((prev) => [
+              ...prev,
+              {
+                sender: 'agent',
+                agentName: data.agent_name,
+                text: data.message,
+                isEscalated: false,
+                isClosed: false
+              }
+            ]);
+          } else if (data.type === 'conversation_resolved') {
+            setConversationState('resuelto');
+            setMessages((prev) => [
+              ...prev,
+              {
+                sender: 'system',
+                text: data.message || '✅ La conversación ha sido resuelta por el asesor.',
+                isEscalated: false,
+                isClosed: true
+              }
+            ]);
+          }
+        } catch (e) {
+          console.error('[User WS Parse Error]:', e);
+        }
+      };
+    } catch (err) {
+      console.warn('[User WS Init Error]:', err);
+    }
+
+    return () => {
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.close();
+      }
+    };
+  }, [sessionId]);
+
   // Update initial greeting when language changes if no conversation exists yet
   useEffect(() => {
     if (messages.length === 1 && messages[0].sender === 'bot') {
@@ -151,16 +227,29 @@ export default function FloatingChat({ isOpen, setIsOpen }) {
     ];
 
     setMessages(newMessages);
-    setLoading(true);
 
+    // If conversation is already claimed and in live attention with an agent, dispatch directly via WebSocket
+    if (conversationState === 'en_atencion' || conversationState === 'pendiente') {
+      if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+        socketRef.current.send(JSON.stringify({ message: userText }));
+      }
+      return;
+    }
+
+    // Default Bot interaction
+    setLoading(true);
     try {
       const cleanHistory = messages.map((m) => ({
         sender: m.sender,
         text: m.text
       }));
-      const data = await sendChatMessage(userText, 'web_session_01', language, cleanHistory);
+      const data = await sendChatMessage(userText, sessionId, language, cleanHistory);
       const isEscalated = data.is_escalated;
       const isClosed = data.is_closed;
+
+      if (isEscalated) {
+        setConversationState('pendiente');
+      }
 
       setMessages((prev) => [
         ...prev,
@@ -173,7 +262,7 @@ export default function FloatingChat({ isOpen, setIsOpen }) {
         }
       ]);
 
-      // If escalated, record active query for lead form
+      // If escalated, record active query for lead form and start inactivity reminder
       if (isEscalated && !isClosed) {
         setActiveLeadMessage(userText);
         inactivityTimerRef.current = setTimeout(() => {
@@ -255,7 +344,7 @@ export default function FloatingChat({ isOpen, setIsOpen }) {
         phone: leadPhone.trim(),
         program: leadProgram,
         user_message: activeLeadMessage || 'Consulta desde el chat web',
-        session_id: 'web_session_01',
+        session_id: sessionId,
         language: language
       });
 
@@ -298,11 +387,31 @@ export default function FloatingChat({ isOpen, setIsOpen }) {
           aria-label="Open AI Customer Support Chat"
         >
           <BrainCircuit size={30} className="ai-brain-icon" />
+          {conversationState === 'en_atencion' && (
+            <span className="live-agent-ping" title="Atención en vivo con asesor"></span>
+          )}
         </button>
       ) : (
         <div className="chat-window scale-in">
+          {/* Header */}
           <div className="chat-header">
-            <span className="chat-header-title">{t('chatHeader')}</span>
+            <div className="chat-header-left">
+              {conversationState === 'en_atencion' ? (
+                <Headphones size={20} className="gold-text animate-bounce" />
+              ) : (
+                <BrainCircuit size={20} className="gold-text" />
+              )}
+              <div className="chat-header-titles">
+                <span className="chat-header-title">
+                  {conversationState === 'en_atencion' 
+                    ? (language === 'es' ? `Asesor en Vivo: ${assignedAgent || 'Admissions'}` : `Live Advisor: ${assignedAgent || 'Admissions'}`)
+                    : t('chatHeader')}
+                </span>
+                {conversationState === 'en_atencion' && (
+                  <span className="live-status-pill">● EN VIVO</span>
+                )}
+              </div>
+            </div>
             <button 
               className="chat-close-btn" 
               onClick={() => setIsOpen(false)}
@@ -315,13 +424,29 @@ export default function FloatingChat({ isOpen, setIsOpen }) {
           <div className="chat-body">
             {messages.map((msg, index) => (
               <React.Fragment key={index}>
-                <div
-                  className={`message-bubble ${
-                    msg.sender === 'user' ? 'message-user slide-up' : 'message-bot slide-up'
-                  }`}
-                >
-                  <div className="msg-content">{formatMessageContent(msg.text)}</div>
-                </div>
+                {msg.sender === 'system' ? (
+                  <div className="system-notice-badge fade-in">
+                    <span>{msg.text}</span>
+                  </div>
+                ) : (
+                  <div
+                    className={`message-bubble ${
+                      msg.sender === 'user' 
+                        ? 'message-user slide-up' 
+                        : msg.sender === 'agent' 
+                          ? 'message-agent slide-up' 
+                          : 'message-bot slide-up'
+                    }`}
+                  >
+                    {msg.sender === 'agent' && (
+                      <div className="agent-msg-tag">
+                        <Headphones size={12} />
+                        <span>{msg.agentName || 'Asesor Lumina'}</span>
+                      </div>
+                    )}
+                    <div className="msg-content">{formatMessageContent(msg.text)}</div>
+                  </div>
+                )}
 
                 {/* Closing / Farewell Quick Action Controls */}
                 {msg.isClosed && index === messages.length - 1 && (
@@ -337,6 +462,7 @@ export default function FloatingChat({ isOpen, setIsOpen }) {
                     <button 
                       className="btn-chat-action restart-action" 
                       onClick={() => {
+                        setConversationState('bot');
                         setMessages([
                           {
                             sender: 'bot',
@@ -379,7 +505,7 @@ export default function FloatingChat({ isOpen, setIsOpen }) {
                   </div>
                 )}
 
-                {/* Inline Lead Capture Card with Real-Time Validation (Opens when 'Yes' is clicked) */}
+                {/* Inline Lead Capture Card with Real-Time Validation */}
                 {msg.isEscalated && msg.escalationChoice === 'accepted' && !leadSubmitted && index === messages.length - 1 && (
                   <div className="chat-lead-card slide-up">
                     <div className="lead-card-header">
@@ -493,7 +619,11 @@ export default function FloatingChat({ isOpen, setIsOpen }) {
           <form onSubmit={handleSend} className="chat-input-wrapper">
             <input
               type="text"
-              placeholder={t('chatPlaceholder')}
+              placeholder={
+                conversationState === 'en_atencion'
+                  ? (language === 'es' ? 'Escribe al asesor humano en vivo...' : 'Type to the live human advisor...')
+                  : t('chatPlaceholder')
+              }
               value={input}
               onChange={(e) => setInput(e.target.value)}
               className="chat-input"

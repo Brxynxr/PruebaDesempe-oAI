@@ -13,6 +13,16 @@ google-genai>=0.1.0
 # Seguridad y Limites
 slowapi>=0.1.9
 
+# Base de datos y persistencia (SQLite + PostgreSQL para Render)
+sqlalchemy>=2.0.28
+psycopg2-binary>=2.9.9
+
+# Autenticacion y Seguridad
+pyjwt>=2.8.0
+passlib[bcrypt]>=1.7.4
+bcrypt>=4.0.0
+python-multipart>=0.0.9
+
 # Pruebas
 pytest>=8.0.0
 httpx>=0.27.0

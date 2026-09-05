@@ -10,6 +10,9 @@ backend/.env
 *.env
 backend/chroma_data/
 chroma_data/
+*.db
+lumina.db
+backend/lumina.db
 
 # Node / Frontend
 node_modules/

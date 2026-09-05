@@ -1,0 +1,90 @@
+{
+  "name": "Academia Lumina - Reporte Diario de Métricas y Desempeño RAG",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "cronExpression": "0 8 * * *"
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        250,
+        300
+      ],
+      "id": "schedule-trigger-daily-8am",
+      "name": "Diario a las 8:00 AM"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "http://backend:8000/api/v1/metrics",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "={{ $env.BACKEND_API_KEY || 'lumina_dev_api_key_2026' }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        480,
+        300
+      ],
+      "id": "http-get-metrics",
+      "name": "Obtener Métricas del Backend"
+    },
+    {
+      "parameters": {
+        "fromEmail": "={{ $env.SMTP_SENDER_EMAIL || 'admissions@academialumina.edu.co' }}",
+        "toEmail": "={{ $env.ESCALATION_EMAIL || 'admissions@academialumina.edu.co' }}",
+        "subject": "=📊 Reporte Diario de Operación y Métricas RAG - Academia Lumina ({{ $now.format('YYYY-MM-DD') }})",
+        "text": "=REPORTE DIARIO DE OPERACIONES - ACADEMIA LUMINA AI\nFecha: {{ $now.format('YYYY-MM-DD HH:mm') }}\n\n==================================================\nRESUMEN DE RENDIMIENTO Y EFICIENCIA RAG:\n==================================================\n- Total de Consultas Procesadas: {{ $json.total_queries }}\n- Consultas Respondidas por Bot: {{ $json.bot_answered_queries }}\n- Consultas Escaladas a Humano: {{ $json.escalated_queries }} (Tasa: {{ ($json.escalation_rate * 100).toFixed(1) }}%)\n- Tasa de Acierto de Caché Semántico: {{ ($json.cache_hit_rate * 100).toFixed(1) }}%\n- Latencia Promedio: {{ $json.avg_latency_ms.toFixed(2) }} ms\n\n==================================================\nCONSUMO Y COSTOS:\n==================================================\n- Total de Tokens Consumidos: {{ $json.total_tokens_consumed }}\n- Costo Estimado de Inferencia: ${{ $json.estimated_cost_usd.toFixed(6) }} USD\n\n==================================================\nPara consultar el panel en vivo y gestionar conversaciones en tiempo real, visite:\nhttp://localhost:3000/admin\n\n--\nSistema Automatizado de Reportes Academia Lumina AI",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [
+        720,
+        300
+      ],
+      "id": "email-daily-report",
+      "name": "Enviar Reporte Ejecutivo por Email"
+    }
+  ],
+  "connections": {
+    "Diario a las 8:00 AM": {
+      "main": [
+        [
+          {
+            "node": "Obtener Métricas del Backend",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Obtener Métricas del Backend": {
+      "main": [
+        [
+          {
+            "node": "Enviar Reporte Ejecutivo por Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {}
+}

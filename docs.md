@@ -1140,13 +1140,14 @@ Para iniciar la suite completa de contenedores en cualquier entorno:
 docker compose up -d --build
 ```
 
-* **Frontend Web:** `http://localhost:3000`
+* **Frontend Web (Estudiantes):** `http://localhost:3000`
+* **Panel de Asesores & Bandeja en Vivo:** `http://localhost:3000/admin/login` (*Usuario: `admin` / Contraseña: `admin123`*)
 * **Swagger API Docs:** `http://localhost:8000/docs`
-* **Endpoint de Métricas:** `http://localhost:8000/api/v1/metrics`
+* **Endpoint de Métricas (Dual Auth):** `http://localhost:8000/api/v1/metrics`
 * **Consola n8n:** `http://localhost:5678`
 
-### 7.2 Ejecución de Pruebas Unitarias Automatizadas
-Ejecutar los 29 tests dentro del contenedor backend:
+### 7.2 Ejecución de la Suite Completa de Pruebas Automatizadas
+Ejecutar los 43 tests unitarios y de integración dentro del contenedor backend:
 
 ```bash
 docker exec lumina_backend pytest -v
@@ -1154,23 +1155,84 @@ docker exec lumina_backend pytest -v
 
 ```text
 ============================= test session starts ==============================
-collected 29 items
+platform linux -- Python 3.12.14, pytest-9.1.1, pluggy-1.6.0 -- /usr/local/bin/python3.12
+cachedir: .pytest_cache
+rootdir: /app
+plugins: anyio-4.15.0
+collected 43 items
 
-tests/test_cache.py ...                                                  [ 10%]
-tests/test_cors.py ..                                                    [ 17%]
-tests/test_edge_cases.py .....                                           [ 34%]
-tests/test_email_service.py ...                                          [ 44%]
-tests/test_health.py ..                                                  [ 51%]
-tests/test_metrics.py ...                                                [ 62%]
-tests/test_rag_search.py ..                                              [ 68%]
-tests/test_rag_service.py ....                                           [ 82%]
-tests/test_rate_limit.py .                                               [ 86%]
-tests/test_security.py ....                                              [100%]
+tests/test_admin_auth.py::test_password_hashing_and_verification PASSED  [  2%]
+tests/test_admin_auth.py::test_admin_login_success PASSED                [  4%]
+tests/test_admin_auth.py::test_admin_login_invalid_password PASSED       [  6%]
+tests/test_admin_auth.py::test_admin_login_invalid_username PASSED       [  9%]
+tests/test_admin_auth.py::test_admin_me_endpoint_with_valid_token PASSED [ 11%]
+tests/test_admin_auth.py::test_admin_me_endpoint_unauthorized PASSED     [ 13%]
+tests/test_cache.py::test_cache_hit_and_miss PASSED                      [ 16%]
+tests/test_cache.py::test_cache_ttl_expiration PASSED                    [ 18%]
+tests/test_cache.py::test_cache_clear PASSED                             [ 20%]
+tests/test_cors.py::test_cors_allowed_origin PASSED                      [ 23%]
+tests/test_cors.py::test_cors_disallowed_origin PASSED                   [ 25%]
+tests/test_documents_upload.py::test_document_upload_unauthorized PASSED [ 27%]
+tests/test_documents_upload.py::test_document_upload_invalid_file_extension PASSED [ 30%]
+tests/test_documents_upload.py::test_document_upload_success_and_reindex PASSED [ 32%]
+tests/test_edge_cases.py::test_ip_spoofing_extraction PASSED             [ 34%]
+tests/test_edge_cases.py::test_guardrails_legitimate_queries_not_blocked PASSED [ 37%]
+tests/test_edge_cases.py::test_english_query_uses_english_few_shots PASSED [ 39%]
+tests/test_edge_cases.py::test_groq_api_failure_fallback_multilingual PASSED [ 41%]
+tests/test_edge_cases.py::test_cache_history_isolation PASSED            [ 44%]
+tests/test_email_service.py::test_send_email_task_without_credentials PASSED [ 46%]
+tests/test_email_service.py::test_send_email_task_with_credentials_smtp PASSED [ 48%]
+tests/test_email_service.py::test_send_escalation_email_async PASSED     [ 51%]
+tests/test_escalation_lifecycle.py::test_conversation_lifecycle_and_state_transitions PASSED [ 53%]
+tests/test_escalation_lifecycle.py::test_admin_conversations_api_flow PASSED [ 55%]
+tests/test_escalation_lifecycle.py::test_sla_breach_detection PASSED     [ 58%]
+tests/test_health.py::test_root_endpoint PASSED                          [ 60%]
+tests/test_health.py::test_health_check_endpoint PASSED                  [ 62%]
+tests/test_metrics.py::test_metrics_service_calculation PASSED           [ 65%]
+tests/test_metrics.py::test_metrics_endpoint_authorized PASSED           [ 67%]
+tests/test_metrics.py::test_metrics_endpoint_unauthorized PASSED         [ 69%]
+tests/test_rag_search.py::test_ingestion_and_chunking PASSED             [ 72%]
+tests/test_rag_search.py::test_vector_store_indexing_and_search PASSED   [ 74%]
+tests/test_rag_service.py::test_rag_service_in_scope_query PASSED        [ 76%]
+tests/test_rag_service.py::test_rag_service_out_of_scope_query PASSED    [ 79%]
+tests/test_rag_service.py::test_rag_service_closing_intent PASSED        [ 81%]
+tests/test_rag_service.py::test_chat_api_endpoint PASSED                 [ 83%]
+tests/test_rate_limit.py::test_rate_limiting_enforced PASSED             [ 86%]
+tests/test_real_tokens_metrics.py::test_metrics_service_token_and_cost_calculation PASSED [ 88%]
+tests/test_real_tokens_metrics.py::test_metrics_endpoint_with_admin_bearer_token PASSED [ 90%]
+tests/test_security.py::test_chat_without_api_key PASSED                 [ 93%]
+tests/test_security.py::test_chat_with_invalid_api_key PASSED            [ 95%]
+tests/test_security.py::test_chat_with_valid_api_key PASSED              [ 97%]
+tests/test_security.py::test_chat_prompt_injection_blocked PASSED        [100%]
 
-======================== 29 passed, 8 warnings in 33.07s ========================
+======================= 43 passed, 10 warnings in 25.96s =======================
 ```
 
 ---
 
+## 8. Arquitectura Extendida: Persistencia, Panel Admin, WebSockets y n8n
+
+### 8.1 Máquina de Estados de Conversación (SQLite + SQLAlchemy 2.0)
+Las interacciones de los estudiantes se registran de forma estructurada en la base de datos `lumina.db` mediante el repositorio `ConversationRepository`, transitando a través de un ciclo de vida formal:
+* **`bot`**: La conversación es atendida automáticamente por el asistente RAG en base a la documentación oficial.
+* **`pendiente`**: Se dispara cuando el asistente detecta una consulta fuera de alcance o solicitud explícita de asesor humano.
+* **`en_atencion`**: El asesor humano reclama la conversación desde la bandeja de entrada del panel administrativo.
+* **`resuelto`**: El asesor concluye la atención al estudiante.
+
+### 8.2 Canales WebSockets Bidireccionales para Live Chat
+* **Canal Estudiante (`/api/v1/ws/chat/{session_id}`)**: Permite recibir notificaciones de ingreso de asesor y mensajes en tiempo real.
+* **Canal Asesores (`/api/v1/ws/agent`)**: Difusión en vivo de nuevas conversaciones escaladas, asignaciones y resolución de tickets.
+
+### 8.3 Ingesta Dinámica de Documentos y Reindexación Vectorial
+El endpoint administrativo `POST /api/v1/admin/documents/upload` valida la extensión `.md`, almacena el archivo en el directorio de conocimiento oficial `backend/app/data/`, divide el texto en fragmentos con solapamiento (*chunking*) y reindexa inmediatamente la colección en ChromaDB sin requerir reinicios de servidor.
+
+### 8.4 Suite de Automatización de Procesos con n8n
+1. **`n8n/workflow.json`**: Enrutador de mensajería externa y disparador de notificaciones.
+2. **`n8n/workflow_sla.json`**: Monitoreo programado cada 5 minutos contra el endpoint `/api/v1/admin/conversations/sla/breached?threshold_minutes=10` para alertar sobre leads esperando atención humana por más de 10 minutos.
+3. **`n8n/workflow_reportes.json`**: Generación diaria a las 8:00 AM del informe consolidado de consultas, aciertos de caché, tasa de escalamiento y consumo de tokens.
+
+---
+
 ## 📄 Conclusión
-El sistema **Academia Lumina AI** representa una solución de nivel producción, combinando la velocidad de inferencia de Groq, la precisión semántica de ChromaDB, una interfaz de usuario accesible y una postura de ciberseguridad robusta de 4 capas.
+El sistema **Academia Lumina AI** consolida una solución empresarial integral, segura y altamente escalable para la atención de estudiantes, integrando recuperación semántica RAG, inferencia de baja latencia con Groq, persistencia relacional con SQLite, atención humana en vivo con WebSockets y orquestación avanzada de flujos con n8n.
+

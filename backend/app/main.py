@@ -12,11 +12,21 @@ from app.api.v1.router import api_v1_router
 from app.services.ingestion_service import IngestionService
 from app.db.vector_store import VectorStore
 
+from app.db.session import init_db, SessionLocal
+from app.core.auth import seed_initial_admin
+
 logger = logging.getLogger("lumina")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """FastAPI application lifespan. Auto-ingests business documents into ChromaDB on startup."""
+    """FastAPI application lifespan. Initializes SQLite DB, seeds admin user, and auto-ingests business documents into ChromaDB on startup."""
+    # 1. Initialize SQLite persistence and seed admin account
+    init_db()
+    with SessionLocal() as db:
+        seed_initial_admin(db)
+    logger.info("SQLite database and Admin seed initialized.")
+
+    # 2. Populate Vector Store if needed
     data_dir = os.path.join(os.path.dirname(__file__), "data")
     vector_store = VectorStore(collection_name="academia_lumina_kb")
     
@@ -56,8 +66,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "OPTIONS"],
-    allow_headers=["Content-Type", "X-API-Key"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allow_headers=["Content-Type", "X-API-Key", "Authorization"],
 )
 
 app.include_router(api_v1_router, prefix="/api/v1")
