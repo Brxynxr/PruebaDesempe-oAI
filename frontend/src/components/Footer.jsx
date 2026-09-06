@@ -2,7 +2,7 @@ import React from 'react';
 import { BookOpen, Mail, Phone, MapPin } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 
-export default function Footer() {
+export default function Footer({ onNavigateToAdmin }) {
   const { t } = useLanguage();
 
   return (
@@ -38,6 +38,13 @@ export default function Footer() {
 
       <div className="footer-bottom">
         <p>© 2026 Academia Lumina. {t('footerRights')}</p>
+        <button 
+          onClick={onNavigateToAdmin}
+          className="footer-admin-link"
+          title="Acceso Asesores Lumina"
+        >
+          {t('advisorPortal')}
+        </button>
       </div>
     </footer>
   );

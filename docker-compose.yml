@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # 1. Servicio Backend en FastAPI con RAG y Groq LLM
   backend:

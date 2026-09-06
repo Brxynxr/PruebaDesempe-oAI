@@ -1,5 +1,5 @@
 {
-  "name": "Academia Lumina - Customer Support RAG Router & Escalation Workflow",
+  "name": "Academia Lumina - Customer Support RAG Router & Telegram Escalation",
   "nodes": [
     {
       "parameters": {
@@ -70,20 +70,21 @@
     },
     {
       "parameters": {
-        "fromEmail": "={{ $env.SMTP_SENDER_EMAIL || 'admissions@academialumina.edu.co' }}",
-        "toEmail": "={{ $env.ESCALATION_EMAIL || 'admissions@academialumina.edu.co' }}",
-        "subject": "=⚠️ Alerta de Escalamiento Humano - Academia Lumina (Sesión: {{ $json.session_id }})",
-        "text": "=Se ha recibido una consulta que supera el alcance automatizado de la base de documentos oficiales.\n\nDetalles de la interacción:\n--------------------------------------------------\n- ID de Sesión: {{ $json.session_id }}\n- Respuesta entregada al usuario: {{ $json.response }}\n- Enlace WhatsApp enviado: {{ $json.whatsapp_link }}\n--------------------------------------------------\nPor favor estar atentos al canal de WhatsApp (+57 324 783 6387) para atender al estudiante.",
+        "method": "POST",
+        "url": "https://api.telegram.org/bot8856257947:AAF3buxaPS5fSmBQWPY0IG6GCjwPEdR_oyU/sendMessage",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"chat_id\": \"7761516818\",\n  \"text\": \"⚠️ <b>ALERTA DE ESCALAMIENTO N8N — ACADEMIA LUMINA</b>\\n\\n🆔 <b>ID Sesión:</b> <code>\" + $json.session_id + \"</code>\\n🤖 <b>Respuesta Bot:</b>\\n<i>\" + $json.response + \"</i>\\n\\n📲 <b>Enlace WhatsApp:</b> \" + ($json.whatsapp_link || 'No generado') + \"\\n\\n⚡ <i>Atención inmediata requerida.</i>\",\n  \"parse_mode\": \"HTML\"\n}",
         "options": {}
       },
-      "type": "n8n-nodes-base.emailSend",
-      "typeVersion": 2,
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
       "position": [
         920,
         200
       ],
-      "id": "email-notification-node",
-      "name": "Notificación Correo Interno Admisiones"
+      "id": "telegram-notification-node",
+      "name": "Notificación Telegram Admisiones"
     },
     {
       "parameters": {
@@ -128,7 +129,7 @@
       "main": [
         [
           {
-            "node": "Notificación Correo Interno Admisiones",
+            "node": "Notificación Telegram Admisiones",
             "type": "main",
             "index": 0
           },
@@ -147,7 +148,7 @@
         ]
       ]
     },
-    "Notificación Correo Interno Admisiones": {
+    "Notificación Telegram Admisiones": {
       "main": [
         []
       ]

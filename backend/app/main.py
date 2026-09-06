@@ -39,7 +39,18 @@ async def lifespan(app: FastAPI):
     else:
         logger.info("Vector database active with %d chunks.", vector_store.count())
     
+    # 3. Start Telegram Bidirectional Polling Daemon (if configured)
+    from app.services.telegram_service import TelegramService
+    TelegramService.start_polling()
+
+    # 4. Start automatic cleanup for resolved conversations older than 30 minutes
+    from app.services.cleanup_service import CleanupService
+    CleanupService.start_periodic_cleanup(interval_seconds=60, max_age_minutes=30)
+    
     yield
+
+    CleanupService.stop_periodic_cleanup()
+    TelegramService.stop_polling()
 
 app = FastAPI(
     title=settings.APP_NAME,

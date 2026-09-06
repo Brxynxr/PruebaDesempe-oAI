@@ -1,15 +1,10 @@
 {
-  "name": "Academia Lumina - Monitor SLA y Alerta de Leads Abandonados",
+  "name": "Academia Lumina - Monitor de SLA y Alertas Telegram",
   "nodes": [
     {
       "parameters": {
         "rule": {
-          "interval": [
-            {
-              "field": "minutes",
-              "minutesInterval": 5
-            }
-          ]
+          "cronExpression": "*/5 * * * *"
         }
       },
       "type": "n8n-nodes-base.scheduleTrigger",
@@ -24,16 +19,7 @@
     {
       "parameters": {
         "method": "GET",
-        "url": "http://backend:8000/api/v1/admin/conversations/sla/breached",
-        "sendQuery": true,
-        "queryParameters": {
-          "parameters": [
-            {
-              "name": "threshold_minutes",
-              "value": "10"
-            }
-          ]
-        },
+        "url": "http://backend:8000/api/v1/admin/conversations/sla/breached?threshold_minutes=10",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -56,7 +42,20 @@
         300
       ],
       "id": "http-get-sla-breached",
-      "name": "Consultar Conversaciones Incumpliendo SLA"
+      "name": "Consultar SLA Breached en Backend"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst rawData = items.map(i => i.json);\nconst count = Array.isArray(rawData) ? rawData.length : (rawData.id ? 1 : 0);\n\nreturn [{\n  json: {\n    count: count,\n    breached_conversations: rawData,\n    threshold_minutes: 10\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        700,
+        300
+      ],
+      "id": "code-count-sla",
+      "name": "Evaluar Cola de Espera"
     },
     {
       "parameters": {
@@ -73,7 +72,7 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
       "position": [
-        700,
+        920,
         300
       ],
       "id": "if-sla-breached",
@@ -81,20 +80,21 @@
     },
     {
       "parameters": {
-        "fromEmail": "={{ $env.SMTP_SENDER_EMAIL || 'admissions@academialumina.edu.co' }}",
-        "toEmail": "={{ $env.ESCALATION_EMAIL || 'admissions@academialumina.edu.co' }}",
-        "subject": "=🚨 ALERTA CRÍTICA: {{ $json.count }} Lead(s) esperando atención por más de 10 min - Academia Lumina",
-        "text": "=ALERTA DE SLA DE ATENCIÓN HUMANA\n\nSe han detectado {{ $json.count }} conversaciones en estado pendiente sin asignar a ningún asesor por más de {{ $json.threshold_minutes }} minutos.\n\nPor favor ingresar de inmediato al Panel de Administración de Academia Lumina para reclamar y atender a los estudiantes:\nhttp://localhost:3000/admin\n\nDetalle de sesiones afectadas:\n{{ JSON.stringify($json.breached_conversations, null, 2) }}\n\n--\nSistema de Monitoreo Automático Academia Lumina AI",
+        "method": "POST",
+        "url": "https://api.telegram.org/bot8856257947:AAF3buxaPS5fSmBQWPY0IG6GCjwPEdR_oyU/sendMessage",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"chat_id\": \"7761516818\",\n  \"text\": \"🚨 <b>ALERTA CRÍTICA DE SLA N8N (>10 MIN) — ACADEMIA LUMINA</b>\\n\\n⚠️ Se han detectado <b>\" + $json.count + \"</b> conversación(es) esperando atención por más de 10 minutos.\\n\\n👉 Por favor ingresar de inmediato al panel o responder en Telegram:\\nhttp://localhost:3000/admin/login\",\n  \"parse_mode\": \"HTML\"\n}",
         "options": {}
       },
-      "type": "n8n-nodes-base.emailSend",
-      "typeVersion": 2,
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
       "position": [
-        920,
+        1140,
         250
       ],
-      "id": "email-sla-alert",
-      "name": "Enviar Alerta SLA a Supervisores"
+      "id": "telegram-sla-alert",
+      "name": "Enviar Alerta SLA a Telegram"
     }
   ],
   "connections": {
@@ -102,14 +102,25 @@
       "main": [
         [
           {
-            "node": "Consultar Conversaciones Incumpliendo SLA",
+            "node": "Consultar SLA Breached en Backend",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Consultar Conversaciones Incumpliendo SLA": {
+    "Consultar SLA Breached en Backend": {
+      "main": [
+        [
+          {
+            "node": "Evaluar Cola de Espera",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Evaluar Cola de Espera": {
       "main": [
         [
           {
@@ -124,11 +135,17 @@
       "main": [
         [
           {
-            "node": "Enviar Alerta SLA a Supervisores",
+            "node": "Enviar Alerta SLA a Telegram",
             "type": "main",
             "index": 0
           }
-        ]
+        ],
+        []
+      ]
+    },
+    "Enviar Alerta SLA a Telegram": {
+      "main": [
+        []
       ]
     }
   },

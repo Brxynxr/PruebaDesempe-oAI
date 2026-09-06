@@ -46,6 +46,17 @@ export default function FloatingChat({ isOpen, setIsOpen }) {
   const messagesEndRef = useRef(null);
   const inactivityTimerRef = useRef(null);
 
+  // Close chat on ESC key
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && isOpen) {
+        setIsOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, setIsOpen]);
+
   // Client-side validation helpers
   const validateName = (val) => {
     const trimmed = val.trim();
@@ -378,23 +389,31 @@ export default function FloatingChat({ isOpen, setIsOpen }) {
   };
 
   return (
-    <div className="floating-chat-container">
-      {!isOpen ? (
-        <button
-          className="chat-bubble-btn pulse-glow"
-          onClick={() => setIsOpen(true)}
-          title={t('aiAssistant')}
-          aria-label="Open AI Customer Support Chat"
-        >
-          <BrainCircuit size={30} className="ai-brain-icon" />
-          {conversationState === 'en_atencion' && (
-            <span className="live-agent-ping" title="Atención en vivo con asesor"></span>
-          )}
-        </button>
-      ) : (
-        <div className="chat-window scale-in">
-          {/* Header */}
-          <div className="chat-header">
+    <>
+      {isOpen && (
+        <div 
+          className="chat-backdrop-overlay fade-in" 
+          onClick={() => setIsOpen(false)}
+          title={language === 'es' ? 'Haz clic afuera para cerrar' : 'Click outside to close'}
+        />
+      )}
+      <div className="floating-chat-container">
+        {!isOpen ? (
+          <button
+            className="chat-bubble-btn pulse-glow"
+            onClick={() => setIsOpen(true)}
+            title={t('aiAssistant')}
+            aria-label="Open AI Customer Support Chat"
+          >
+            <BrainCircuit size={30} className="ai-brain-icon" />
+            {conversationState === 'en_atencion' && (
+              <span className="live-agent-ping" title="Atención en vivo con asesor"></span>
+            )}
+          </button>
+        ) : (
+          <div className="chat-window chat-window-centered scale-in">
+            {/* Header */}
+            <div className="chat-header">
             <div className="chat-header-left">
               {conversationState === 'en_atencion' ? (
                 <Headphones size={20} className="gold-text animate-bounce" />
@@ -641,5 +660,6 @@ export default function FloatingChat({ isOpen, setIsOpen }) {
         </div>
       )}
     </div>
+    </>
   );
 }

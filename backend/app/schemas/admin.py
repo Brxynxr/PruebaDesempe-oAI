@@ -52,3 +52,14 @@ class DocumentUploadResponse(BaseModel):
 
 class AgentMessageRequest(BaseModel):
     message: str = Field(..., min_length=1, description="Message content from the agent")
+
+class ConversationUpdateRequest(BaseModel):
+    estado: Optional[str] = Field(None, description="New status: pendiente, en_atencion, resuelto, bot")
+    agente_asignado: Optional[str] = Field(None, description="Assigned advisor username")
+    idioma: Optional[str] = Field(None, description="Language: es, en, fr, pt")
+
+class ConversationCreateRequest(BaseModel):
+    session_id: str = Field(..., description="Unique session ID")
+    idioma: Optional[str] = Field("es", description="Language code")
+    estado: Optional[str] = Field("pendiente", description="Initial status")
+    initial_message: Optional[str] = Field(None, description="Initial student message")

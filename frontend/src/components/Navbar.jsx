@@ -1,9 +1,9 @@
 import React from 'react';
-import { BookOpen, Sparkles, Home, Layers, Sun, Moon, Globe } from 'lucide-react';
+import { BookOpen, Sparkles, Home, Layers, Sun, Moon, Globe, LogIn } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
 
-export default function Navbar({ activeTab, setActiveTab, onOpenChat }) {
+export default function Navbar({ activeTab, setActiveTab, onOpenChat, onNavigateToAdmin }) {
   const { language, toggleLanguage, t } = useLanguage();
   const { theme, toggleTheme } = useTheme();
 
@@ -36,9 +36,20 @@ export default function Navbar({ activeTab, setActiveTab, onOpenChat }) {
           </button>
         </div>
 
-        {/* Action Controls: Language Toggle + Theme Switcher + AI Assistant Trigger */}
+        {/* Action Controls: Language Toggle + Theme Switcher + Advisor Portal + AI Assistant */}
         <div className="nav-actions">
-          {/* Language Switcher Button (Phase 4) */}
+          {/* Advisor Portal Login Button */}
+          <button
+            className="btn-advisor-login"
+            onClick={onNavigateToAdmin}
+            title={t('advisorPortal')}
+            aria-label="Acceso Asesores"
+          >
+            <LogIn size={15} />
+            <span className="advisor-btn-text">{t('advisorPortal')}</span>
+          </button>
+
+          {/* Language Switcher Button */}
           <button
             className="btn-control-toggle"
             onClick={toggleLanguage}
@@ -49,7 +60,7 @@ export default function Navbar({ activeTab, setActiveTab, onOpenChat }) {
             <span className="lang-code">{language === 'en' ? 'ES' : 'EN'}</span>
           </button>
 
-          {/* Theme Toggle Button (Phase 5) */}
+          {/* Theme Toggle Button */}
           <button
             className="btn-control-toggle"
             onClick={toggleTheme}

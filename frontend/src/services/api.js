@@ -189,7 +189,8 @@ export async function getConversationDetail(conversationId) {
   });
 
   if (!response.ok) {
-    throw new Error('Error al cargar detalle de conversación');
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.detail || 'Error al cargar detalle de conversación');
   }
 
   return await response.json();
@@ -205,7 +206,8 @@ export async function claimConversation(conversationId) {
   });
 
   if (!response.ok) {
-    throw new Error('Error al reclamar conversación');
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.detail || 'Error al reclamar conversación');
   }
 
   return await response.json();
@@ -221,7 +223,8 @@ export async function resolveConversation(conversationId) {
   });
 
   if (!response.ok) {
-    throw new Error('Error al resolver conversación');
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.detail || 'Error al resolver conversación');
   }
 
   return await response.json();
@@ -238,7 +241,78 @@ export async function sendAgentMessage(conversationId, message) {
   });
 
   if (!response.ok) {
-    throw new Error('Error al enviar mensaje');
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.detail || 'Error al enviar mensaje');
+  }
+
+  return await response.json();
+}
+
+/**
+ * Create a new conversation ticket (CRUD - Create).
+ */
+export async function createConversation(data) {
+  const response = await fetch(`${API_BASE_URL}/admin/conversations`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(data)
+  });
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.detail || 'Error al crear conversación');
+  }
+
+  return await response.json();
+}
+
+/**
+ * Update conversation status / fields (CRUD - Update).
+ */
+export async function updateConversation(conversationId, data) {
+  const response = await fetch(`${API_BASE_URL}/admin/conversations/${conversationId}`, {
+    method: 'PUT',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(data)
+  });
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.detail || 'Error al actualizar conversación');
+  }
+
+  return await response.json();
+}
+
+/**
+ * Delete a conversation (CRUD - Delete).
+ */
+export async function deleteConversation(conversationId) {
+  const response = await fetch(`${API_BASE_URL}/admin/conversations/${conversationId}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders()
+  });
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.detail || 'Error al eliminar conversación');
+  }
+
+  return await response.json();
+}
+
+/**
+ * Clear and purge all conversations from database (Admin cleanup).
+ */
+export async function clearAllConversations() {
+  const response = await fetch(`${API_BASE_URL}/admin/conversations/clear-all`, {
+    method: 'DELETE',
+    headers: getAuthHeaders()
+  });
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.detail || 'Error al limpiar la base de datos');
   }
 
   return await response.json();

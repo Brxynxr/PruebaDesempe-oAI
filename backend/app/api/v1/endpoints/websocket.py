@@ -40,7 +40,7 @@ async def websocket_user_chat(websocket: WebSocket, session_id: str):
                 conv = ConversationRepository.get_or_create_conversation(db, session_id)
                 msg = ConversationRepository.add_message(db, conv.id, remitente="user", contenido=msg_content)
                 
-                # Notify connected agents in real time
+                # Notify connected agents in real time via WebSockets and Telegram
                 await manager.broadcast_to_agents({
                     "type": "user_message",
                     "conversation_id": conv.id,
@@ -49,6 +49,11 @@ async def websocket_user_chat(websocket: WebSocket, session_id: str):
                     "estado": conv.estado,
                     "timestamp": msg.timestamp.isoformat()
                 })
+                
+                # Push alert to advisor on Telegram only if case is actively taken by Telegram advisor
+                if conv.estado == "en_atencion" and conv.agente_asignado and "Telegram" in conv.agente_asignado:
+                    from app.services.telegram_service import TelegramService
+                    TelegramService.send_student_live_message(session_id=session_id, message=msg_content, conversation_id=conv.id)
 
     except WebSocketDisconnect:
         manager.disconnect_user(websocket, session_id)

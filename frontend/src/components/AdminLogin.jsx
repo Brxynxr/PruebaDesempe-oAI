@@ -102,11 +102,29 @@ export default function AdminLogin({ onLoginSuccess, onBackToSite }) {
             ) : (
               <>
                 <LogIn size={18} />
-                <span>{language === 'es' ? 'Iniciar Sesión' : 'Sign In'}</span>
+                <span>{language === 'es' ? 'Ingresar al Backoffice' : 'Sign In to Backoffice'}</span>
               </>
             )}
           </button>
         </form>
+
+        <div className="admin-demo-box">
+          <span className="demo-box-title">{language === 'es' ? 'Credenciales de Acceso Asesor:' : 'Advisor Credentials:'}</span>
+          <div className="demo-credentials-row">
+            <span className="demo-cred-tag">Usuario: <code>admin</code></span>
+            <span className="demo-cred-tag">Clave: <code>LuminaAdmin2026!</code></span>
+          </div>
+          <button 
+            type="button" 
+            className="btn-quick-fill"
+            onClick={() => {
+              setUsername('admin');
+              setPassword('LuminaAdmin2026!');
+            }}
+          >
+            {language === 'es' ? '⚡ Autocompletar credenciales' : '⚡ Auto-fill credentials'}
+          </button>
+        </div>
 
         <div className="admin-login-footer">
           <button
@@ -115,7 +133,7 @@ export default function AdminLogin({ onLoginSuccess, onBackToSite }) {
             onClick={onBackToSite}
           >
             <ArrowLeft size={16} />
-            <span>{language === 'es' ? 'Volver al Sitio Público' : 'Back to Public Site'}</span>
+            <span>{language === 'es' ? 'Volver al Sitio Web' : 'Back to Public Site'}</span>
           </button>
         </div>
       </div>

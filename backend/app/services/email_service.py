@@ -33,7 +33,7 @@ class EmailService:
         digits = re.sub(r'\D', '', phone)
         if len(digits) == 10 and digits.startswith('3'):
             return f"57{digits}"
-        return digits or "573247836387"
+        return digits or re.sub(r'\D', '', settings.WHATSAPP_NUMBER) or "573000000000"
 
     @staticmethod
     def send_lead_email_async(
@@ -82,7 +82,7 @@ class EmailService:
     ) -> None:
         """
         Builds and sends the admin notification email with student dossier and direct WhatsApp CTA button,
-        and automatically dispatches the WhatsApp conversation initiation message from admin (3247836387).
+        and automatically dispatches the WhatsApp conversation initiation message from the configured admin number.
         """
         recipient_email = settings.ESCALATION_EMAIL
         sender_email = settings.SMTP_SENDER_EMAIL or settings.SMTP_USER or recipient_email

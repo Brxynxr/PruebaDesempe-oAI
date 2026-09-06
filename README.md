@@ -18,11 +18,16 @@ An enterprise-grade, full-stack AI Customer Support System built for **Academia 
 
 - **🧠 RAG Knowledge Engine**: Semantic search using persistent ChromaDB embeddings and Groq LLM inference (`openai/gpt-oss-120b` / `openai/gpt-oss-20b` fallback) with memory TTL caching and exact token tracking.
 - **💬 Real-Time Live Chat Handoff (WebSockets)**: Bi-directional WebSocket channels (`/ws/chat/{session_id}` for students and `/ws/agent` for admissions staff). Seamlessly transitions from AI bot to a real human advisor with presence badges and instant messaging.
-- **🗄️ Full State Persistence (SQLite & SQLAlchemy 2.0)**: Tracks complete chat lifecycle (`bot` ➔ `pendiente` ➔ `en_atencion` ➔ `resuelto`), message logs, timestamps, and advisor assignments.
+- **📱 Omnichannel Telegram Integration**: Real-time escalation alerts to Telegram advisors with student data extraction (Name, Phone/WhatsApp), unresolved question context, and interactive inline buttons:
+  - `[🙋‍♂️ Tomar Caso]`: Claim conversation from Telegram and establish live bidirectional WebSocket communication.
+  - `[✅ Caso Resuelto]`: Mark ticket resolved and end the conversation directly from Telegram.
+  - `[💬 Abrir WhatsApp]`: Direct WhatsApp deep-link.
+- **🗄️ Full State Persistence & Auto-Cleanup (SQLite & SQLAlchemy 2.0)**: Tracks complete chat lifecycle (`bot` ➔ `pendiente` ➔ `en_atencion` ➔ `resuelto`), message logs, timestamps, and advisor assignments. Includes an automatic **30-minute auto-cleanup background worker** (`CleanupService`) that safely purges resolved conversations.
 - **🔐 Secure Admin Portal (`/admin`)**: Protected by JWT authentication (bcrypt hashing), featuring:
-  - **Live Agent Inbox**: Claim, respond in real-time, and resolve escalated tickets.
+  - **Executive Summary Card**: Compact ticket overview with student inquiry, extracted contact details, and collapsible full bot transcript.
+  - **Guarded Live Agent Inbox**: Prevents sending messages without claiming first (`400 Bad Request` guard & input lock).
   - **Document Uploader**: Drag & drop `.md` files with automatic text chunking and immediate ChromaDB vector re-indexing.
-  - **Live Metrics Dashboard**: Real-time token counts, estimated costs ($ USD), cache hit rate, and latency.
+  - **Live Operations & SLA Dashboard**: AI autonomous resolution rate, tokens/costs ($ USD) saved by cache, Groq LPU inference metrics, latency SLA compliance, CSAT rating, and database case distribution by language and state.
 - **🛡️ 4 Cybersecurity Layers**:
   1. *Real Client IP Rate Limiting* with proxy sanitization (SlowAPI).
   2. *Dual Authentication* (Admin JWT Bearer tokens + `X-API-Key` headers for automated microservices).
@@ -43,8 +48,10 @@ An enterprise-grade, full-stack AI Customer Support System built for **Academia 
 graph TD
     Student([Student / Web User]) -->|HTTP / HTTPS| Frontend[React + Vite Frontend - Port 3000]
     Student <-->|WebSockets /ws/chat| Backend[FastAPI Backend - Port 8000]
-    Advisor([Admissions Advisor]) -->|Admin UI /admin| Frontend
+    Advisor([Admissions Advisor - Web]) -->|Admin UI /admin| Frontend
     Advisor <-->|WebSockets /ws/agent| Backend
+    AdvisorTG([Admissions Advisor - Telegram]) <-->|Long-Polling & Callbacks| TelegramBot[Telegram Bot Service]
+    TelegramBot <--> Backend
     
     Backend -->|CRUD & Conversation State| DB[(SQLite Database lumina.db)]
     Backend -->|Semantic Search| Chroma[(ChromaDB Vector Store)]
@@ -72,13 +79,13 @@ cp .env.example .env
 | `GEMINI_API_KEY` | Google Gemini API Key for Vector Embeddings | `AIzaSy_your_gemini_key_here` |
 | `BACKEND_API_KEY` | Secret API Key for authenticating microservices / n8n | `lumina_secret_key_2026` |
 | `JWT_SECRET_KEY` | Secret key for signing Admin JWT tokens | `lumina_jwt_super_secret_key_2026` |
-| `ADMIN_USERNAME` | Initial administrator username for panel login | `admin` |
-| `ADMIN_PASSWORD` | Initial administrator password for panel login | `admin123` |
+| `ADMIN_USERNAME` | Administrator username (*local development only; set via env in production*) | `admin` |
+| `ADMIN_PASSWORD` | Administrator password (*local development only; set via env in production*) | `admin123` |
 | `ALLOWED_ORIGINS` | Comma-separated allowed CORS origins | `http://localhost:3000,http://127.0.0.1:3000` |
 | `RATE_LIMIT_PER_MINUTE`| Maximum allowed requests per minute per IP | `10/minute` |
 | `ADVISOR_NAME` | Name of the admissions advisor | `Asesor de Admisiones` |
-| `WHATSAPP_NUMBER` | Official WhatsApp contact phone number | `+57 324 783 6387` |
-| `WHATSAPP_URL` | Direct WhatsApp URL endpoint | `https://wa.me/573247836387` |
+| `WHATSAPP_NUMBER` | Official WhatsApp contact phone number (example) | `+57 300 000 0000` |
+| `WHATSAPP_URL` | Direct WhatsApp URL endpoint (example) | `https://wa.me/573000000000` |
 | `ESCALATION_EMAIL` | Destination email for supervisor alerts and digests | `admissions@academialumina.edu.co` |
 | `SMTP_HOST` / `PORT` | SMTP Server configuration | `smtp.gmail.com` / `587` |
 | `SMTP_USER` / `PASSWORD`| SMTP authentication credentials | `your_email@gmail.com` / `app_password` |

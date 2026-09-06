@@ -102,3 +102,33 @@ def test_sla_breach_detection():
         assert any(c.session_id == old_session_id for c in breached)
     finally:
         db.close()
+
+def test_cleanup_resolved_conversations_after_30_minutes():
+    db = SessionLocal()
+    try:
+        # Case 1: Resolved 40 minutes ago (should be pruned)
+        old_session = f"test_resolved_old_{int(datetime.now(timezone.utc).timestamp())}"
+        conv_old = ConversationRepository.get_or_create_conversation(db, session_id=old_session)
+        conv_old.estado = "resuelto"
+        conv_old.updated_at = datetime.now(timezone.utc) - timedelta(minutes=40)
+        ConversationRepository.add_message(db, conv_old.id, remitente="user", contenido="Mensaje antiguo")
+        db.commit()
+
+        # Case 2: Resolved 5 minutes ago (should NOT be pruned)
+        recent_session = f"test_resolved_recent_{int(datetime.now(timezone.utc).timestamp())}"
+        conv_recent = ConversationRepository.get_or_create_conversation(db, session_id=recent_session)
+        conv_recent.estado = "resuelto"
+        conv_recent.updated_at = datetime.now(timezone.utc) - timedelta(minutes=5)
+        ConversationRepository.add_message(db, conv_recent.id, remitente="user", contenido="Mensaje reciente")
+        db.commit()
+
+        # Run cleanup with 30 min threshold
+        deleted_count = ConversationRepository.cleanup_old_resolved_conversations(db, max_age_minutes=30)
+        assert deleted_count >= 1
+
+        # Verify old resolved conversation is gone
+        assert ConversationRepository.get_conversation_by_session_id(db, old_session) is None
+        # Verify recent resolved conversation is still preserved
+        assert ConversationRepository.get_conversation_by_session_id(db, recent_session) is not None
+    finally:
+        db.close()

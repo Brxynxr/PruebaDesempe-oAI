@@ -1,5 +1,5 @@
 {
-  "name": "Academia Lumina - Reporte Diario de Métricas y Desempeño RAG",
+  "name": "Academia Lumina - Reporte Diario Telegram y Desempeño RAG",
   "nodes": [
     {
       "parameters": {
@@ -46,20 +46,21 @@
     },
     {
       "parameters": {
-        "fromEmail": "={{ $env.SMTP_SENDER_EMAIL || 'admissions@academialumina.edu.co' }}",
-        "toEmail": "={{ $env.ESCALATION_EMAIL || 'admissions@academialumina.edu.co' }}",
-        "subject": "=📊 Reporte Diario de Operación y Métricas RAG - Academia Lumina ({{ $now.format('YYYY-MM-DD') }})",
-        "text": "=REPORTE DIARIO DE OPERACIONES - ACADEMIA LUMINA AI\nFecha: {{ $now.format('YYYY-MM-DD HH:mm') }}\n\n==================================================\nRESUMEN DE RENDIMIENTO Y EFICIENCIA RAG:\n==================================================\n- Total de Consultas Procesadas: {{ $json.total_queries }}\n- Consultas Respondidas por Bot: {{ $json.bot_answered_queries }}\n- Consultas Escaladas a Humano: {{ $json.escalated_queries }} (Tasa: {{ ($json.escalation_rate * 100).toFixed(1) }}%)\n- Tasa de Acierto de Caché Semántico: {{ ($json.cache_hit_rate * 100).toFixed(1) }}%\n- Latencia Promedio: {{ $json.avg_latency_ms.toFixed(2) }} ms\n\n==================================================\nCONSUMO Y COSTOS:\n==================================================\n- Total de Tokens Consumidos: {{ $json.total_tokens_consumed }}\n- Costo Estimado de Inferencia: ${{ $json.estimated_cost_usd.toFixed(6) }} USD\n\n==================================================\nPara consultar el panel en vivo y gestionar conversaciones en tiempo real, visite:\nhttp://localhost:3000/admin\n\n--\nSistema Automatizado de Reportes Academia Lumina AI",
+        "method": "POST",
+        "url": "https://api.telegram.org/bot8856257947:AAF3buxaPS5fSmBQWPY0IG6GCjwPEdR_oyU/sendMessage",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"chat_id\": \"7761516818\",\n  \"text\": \"📊 <b>REPORTE DIARIO DE OPERACIONES N8N — ACADEMIA LUMINA</b>\\n\\n📈 <b>Total Consultas:</b> \" + $json.total_queries + \"\\n⚡ <b>Tasa Caché Semántico:</b> \" + $json.cache_hit_rate_percentage + \"\\n⚠️ <b>Tasa Escalamiento:</b> \" + $json.escalation_rate_percentage + \"\\n🔢 <b>Tokens Consumidos:</b> \" + $json.total_tokens + \"\\n💵 <b>Costo Estimado:</b> \" + $json.estimated_cost_usd + \"\\n\\n<i>Generado automáticamente a las 8:00 AM por n8n.</i>\",\n  \"parse_mode\": \"HTML\"\n}",
         "options": {}
       },
-      "type": "n8n-nodes-base.emailSend",
-      "typeVersion": 2,
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
       "position": [
         720,
         300
       ],
-      "id": "email-daily-report",
-      "name": "Enviar Reporte Ejecutivo por Email"
+      "id": "telegram-daily-report",
+      "name": "Enviar Reporte a Telegram"
     }
   ],
   "connections": {
@@ -78,11 +79,16 @@
       "main": [
         [
           {
-            "node": "Enviar Reporte Ejecutivo por Email",
+            "node": "Enviar Reporte a Telegram",
             "type": "main",
             "index": 0
           }
         ]
+      ]
+    },
+    "Enviar Reporte a Telegram": {
+      "main": [
+        []
       ]
     }
   },

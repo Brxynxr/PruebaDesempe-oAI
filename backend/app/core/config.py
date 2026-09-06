@@ -39,8 +39,8 @@ class Settings(BaseSettings):
     
     # Contact and escalation parameters (100% loaded from environment variables)
     ADVISOR_NAME: str = os.getenv("ADVISOR_NAME", "Admissions Advisor")
-    WHATSAPP_NUMBER: str = os.getenv("WHATSAPP_NUMBER", "+57 324 783 6387")
-    WHATSAPP_URL: str = os.getenv("WHATSAPP_URL", "https://wa.me/573247836387")
+    WHATSAPP_NUMBER: str = os.getenv("WHATSAPP_NUMBER", "+57 300 000 0000")
+    WHATSAPP_URL: str = os.getenv("WHATSAPP_URL", "https://wa.me/573000000000")
     ESCALATION_EMAIL: str = os.getenv("ESCALATION_EMAIL", "admissions@academialumina.edu.co")
 
     # Admin Authentication & JWT Settings
@@ -57,6 +57,10 @@ class Settings(BaseSettings):
     SMTP_PASSWORD: str = os.getenv("SMTP_PASSWORD", "")
     SMTP_USE_TLS: bool = os.getenv("SMTP_USE_TLS", "true").lower() == "true"
     SMTP_SENDER_EMAIL: str = os.getenv("SMTP_SENDER_EMAIL", "")
+
+    # Telegram Bot configuration for instant lead and escalation push alerts
+    TELEGRAM_BOT_TOKEN: str = os.getenv("TELEGRAM_BOT_TOKEN", "8856257947:AAF3buxaPS5fSmBQWPY0IG6GCjwPEdR_oyU")
+    TELEGRAM_CHAT_ID: str = os.getenv("TELEGRAM_CHAT_ID", "7761516818")
 
 # Global reusable configuration instance
 settings = Settings()

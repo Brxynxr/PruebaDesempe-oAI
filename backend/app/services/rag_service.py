@@ -56,11 +56,11 @@ PERSONALITY / BRAND TONE
 STRICT RULES:
 1. Answer ONLY using the facts explicitly stated in the CONTEXT section below.
 2. UNMENTIONED SERVICES & AMENITIES: If and ONLY IF the student asks about physical amenities, unlisted services, or external policies not mentioned in CONTEXT (e.g. parking lot, cafeteria, specific teacher names, sibling discounts, installment plans, overseas exchange), respond ONLY THEN with:
-   "No cuento con esa información específica en los registros oficiales. Para confirmarte este detalle, te voy a conectar con un asesor humano de admisiones."
+   "Esa consulta requiere validación especial de nuestro equipo de admisiones. En un instante te voy a comunicar con un asesor en vivo por este mismo chat. Por favor, indícame tu nombre y número de WhatsApp para mantenernos en contacto en caso de que se interrumpa la conexión."
    Do NOT use this template for standard questions about programs, pricing, schedules, levels, or enrollment. For general inquiries about programs and prices, summarize all available information from CONTEXT clearly.
 3. ONLY teaches English, French, and Portuguese. If asked about other languages (German, Italian, Mandarin, etc.), state that the academy does not offer them.
 4. For payment disputes, refund claims, billing issues, or complaints, ALWAYS escalate:
-   "Lamento mucho el inconveniente con tu pago. Para revisar tu caso de inmediato y gestionar la solución, te voy a conectar con un asesor humano de admisiones."
+   "Lamento mucho el inconveniente con tu pago. Para revisar tu caso de inmediato y gestionar la solución con un asesor en vivo por este chat, por favor indícame tu nombre y número de WhatsApp para mantener el contacto."
 5. If the question is completely off-topic (math, cooking, code, trivia, etc.) and unrelated to the academy, politely decline without escalating:
    "Como asistente virtual de la academia, solo puedo orientarte sobre nuestros programas de idiomas (**Inglés, Francés y Portugués**), horarios, precios, modalidades y certificaciones."
 6. GENERAL PRICING, LEVELS & COMPOSITE INQUIRIES: If the student asks about levels, pricing, schedules, programs, or modalities, ALWAYS answer with the official information from CONTEXT. Our semester fees are $450.000 COP for Presencial and $380.000 COP for Virtual for all languages (English, French, Portuguese) and levels (A1 to C1). NEVER escalate normal questions about levels, prices, or programs.
@@ -82,11 +82,11 @@ PERSONALITY / BRAND TONE
 STRICT RULES:
 1. Answer ONLY using the facts explicitly stated in the CONTEXT section below.
 2. UNMENTIONED SERVICES & AMENITIES: If and ONLY IF the student asks about physical amenities, unlisted services, or external policies not mentioned in CONTEXT (e.g. parking lot, cafeteria, specific teacher names, sibling discounts, installment plans, overseas exchange), respond ONLY THEN with:
-   "I do not have that specific information in the official records. To confirm this detail for you, I will connect you with a human admissions advisor."
+   "That inquiry requires special validation from our admissions team. In just a moment, I will connect you with a live admissions advisor right here in this chat. Please share your name and WhatsApp number so we can stay in touch in case the connection is interrupted."
    Do NOT use this template for standard questions about programs, pricing, schedules, levels, or enrollment. For general inquiries about programs and prices, summarize all available information from CONTEXT clearly.
 3. ONLY teaches English, French, and Portuguese. If asked about other languages (German, Italian, Mandarin, etc.), state that the academy does not offer them.
 4. For payment disputes, refund claims, billing issues, or complaints, ALWAYS escalate:
-   "I am very sorry for the issue with your payment. To review your case immediately and arrange a solution, I will connect you with a human admissions advisor."
+   "I am very sorry for the issue with your payment. To review your case immediately with a live advisor right here in this chat, please share your name and WhatsApp number so we can stay in touch."
 5. If the question is completely off-topic (math, cooking, code, trivia, etc.) and unrelated to the academy, politely decline without escalating:
    "As the virtual assistant of the academy, I can only guide you regarding our language programs (**English, French, and Portuguese**), schedules, pricing, modalities, and certifications."
 6. GENERAL PRICING, LEVELS & COMPOSITE INQUIRIES: If the student asks about levels, pricing, schedules, programs, or modalities, ALWAYS answer with the official information from CONTEXT. Our semester fees are $450,000 COP for In-Person and $380,000 COP for Virtual for all languages (English, French, Portuguese) and levels (A1 to C1). NEVER escalate normal questions about levels, prices, or programs.
@@ -134,7 +134,7 @@ FEW_SHOT_EXAMPLES = [
     },
     {
         "role": "assistant",
-        "content": "Nuestra sede presencial cuenta con aulas y laboratorios de idiomas, pero no cuento con esa información específica en los registros oficiales. Para confirmarte este detalle, te voy a conectar con un asesor humano de admisiones."
+        "content": "Nuestra sede presencial cuenta con aulas y laboratorios de idiomas, pero esa consulta requiere validación especial de nuestro equipo de admisiones. En un instante te voy a comunicar con un asesor en vivo por este mismo chat. Por favor, indícame tu nombre y número de WhatsApp para mantenernos en contacto en caso de que se interrumpa la conexión."
     },
     {
         "role": "user",
@@ -142,7 +142,7 @@ FEW_SHOT_EXAMPLES = [
     },
     {
         "role": "assistant",
-        "content": "Lamento mucho el inconveniente con tu pago. Para revisar tu caso de inmediato y gestionar la solución, te voy a conectar con un asesor humano de admisiones."
+        "content": "Lamento mucho el inconveniente con tu pago. Para revisar tu caso de inmediato y gestionar la solución con un asesor en vivo por este chat, por favor indícame tu nombre y número de WhatsApp para mantener el contacto."
     },
     {
         "role": "user",
@@ -193,7 +193,7 @@ FEW_SHOT_EXAMPLES_EN = [
     },
     {
         "role": "assistant",
-        "content": "Our in-person campus has language classrooms and labs, but I do not have that specific information in the official records. To confirm this detail for you, I will connect you with a human admissions advisor."
+        "content": "Our in-person campus has language classrooms and labs, but that inquiry requires special validation from our admissions team. In just a moment, I will connect you with a live admissions advisor right here in this chat. Please share your name and WhatsApp number so we can stay in touch in case the connection is interrupted."
     },
     {
         "role": "user",
@@ -201,7 +201,7 @@ FEW_SHOT_EXAMPLES_EN = [
     },
     {
         "role": "assistant",
-        "content": "I am very sorry for the issue with your payment. To review your case immediately and arrange a solution, I will connect you with a human admissions advisor."
+        "content": "I am very sorry for the issue with your payment. To review your case immediately with a live advisor right here in this chat, please share your name and WhatsApp number so we can stay in touch."
     },
     {
         "role": "user",
@@ -307,10 +307,20 @@ def _is_unrelated_query(user_message: str) -> bool:
 def _check_strict_escalation(user_message: str, assistant_response: str) -> bool:
     """
     Determine if a user query strictly requires human advisor escalation.
-    Never escalates on normal academy queries (programs, levels, prices, schedules, modalities).
+    Never escalates on greetings or normal academy queries (programs, levels, prices, schedules, modalities).
     """
-    msg_lower = user_message.lower()
-    resp_lower = assistant_response.lower()
+    msg_lower = user_message.lower().strip()
+    resp_lower = assistant_response.lower().strip()
+
+    # 0. Greetings & salutations should NEVER escalate
+    cleaned_msg = re.sub(r'[^\w\s]', '', msg_lower).strip()
+    greetings = {
+        "hola", "holaa", "holaaa", "buenas", "buenos dias", "buenos días", 
+        "buenas tardes", "buenas noches", "hello", "hi", "hey", "saludos", 
+        "hola que tal", "hola buenas", "buen dia", "buen día"
+    }
+    if cleaned_msg in greetings or re.match(r'^(hola|buenas|saludos|hello|hi|hey)[\s\w]*$', cleaned_msg):
+        return False
 
     # 1. Off-topic or math queries should NEVER escalate
     if _is_unrelated_query(user_message):
@@ -329,10 +339,16 @@ def _check_strict_escalation(user_message: str, assistant_response: str) -> bool
 
     # 3. Explicit escalation phrases stated by the bot (when it genuinely lacks official context)
     explicit_escalation_phrases = [
+        "requiere validación especial",
+        "requiere validacion especial",
+        "asesor en vivo por este",
+        "asesor humano de admisiones",
         "no cuento con esa información específica",
         "no cuento con esa informacion especifica",
         "lamento mucho el inconveniente con tu pago",
         "lamento mucho el inconveniente con el cobro",
+        "requires special validation",
+        "live admissions advisor",
         "i do not have that specific information in the official records",
         "i am very sorry for the issue with your payment"
     ]
@@ -466,15 +482,15 @@ class RAGService:
         if is_billing or is_amenity:
             if is_billing:
                 sc_text = (
-                    "I am very sorry for the issue with your payment. To review your case immediately and arrange a solution, I will connect you with a human admissions advisor."
+                    "I am very sorry for the issue with your payment. To review your case immediately with a live advisor right here in this chat, please share your name and WhatsApp number so we can stay in touch."
                     if lang_code == "en" else
-                    "Lamento mucho el inconveniente con tu pago. Para revisar tu caso de inmediato y gestionar la solución, te voy a conectar con un asesor humano de admisiones."
+                    "Lamento mucho el inconveniente con tu pago. Para revisar tu caso de inmediato y gestionar la solución con un asesor en vivo por este chat, por favor indícame tu nombre y número de WhatsApp para mantener el contacto."
                 )
             else:
                 sc_text = (
-                    "I do not have that specific information in the official records. To confirm this detail for you, I will connect you with a human admissions advisor."
+                    "That inquiry requires special validation from our admissions team. In just a moment, I will connect you with a live admissions advisor right here in this chat. Please share your name and WhatsApp number so we can stay in touch in case the connection is interrupted."
                     if lang_code == "en" else
-                    "No cuento con esa información específica en los registros oficiales. Para confirmarte este detalle, te voy a conectar con un asesor humano de admisiones."
+                    "Esa consulta requiere validación especial de nuestro equipo de admisiones. En un instante te voy a comunicar con un asesor en vivo por este mismo chat. Por favor, indícame tu nombre y número de WhatsApp para mantenernos en contacto en caso de que se interrumpa la conexión."
                 )
             wa_link = _build_whatsapp_link(user_message, lang_code)
             sc_resp = ChatResponse(
@@ -535,9 +551,9 @@ class RAGService:
             is_escalated = _check_strict_escalation(user_message, "")
             if is_escalated:
                 resp_text = (
-                    "I do not have that specific information in the official records. To confirm this detail for you, I will connect you with a human admissions advisor."
+                    "That inquiry requires special validation from our admissions team. In just a moment, I will connect you with a live admissions advisor right here in this chat. Please share your name and WhatsApp number so we can stay in touch in case the connection is interrupted."
                     if lang_code == "en" else
-                    "No cuento con esa información específica en los registros oficiales. Para confirmarte este detalle, te voy a conectar con un asesor humano de admisiones."
+                    "Esa consulta requiere validación especial de nuestro equipo de admisiones. En un instante te voy a comunicar con un asesor en vivo por este mismo chat. Por favor, indícame tu nombre y número de WhatsApp para mantenernos en contacto en caso de que se interrumpa la conexión."
                 )
                 wa_link = _build_whatsapp_link(user_message, lang_code)
             else:
@@ -578,7 +594,7 @@ class RAGService:
         backoff_seconds = 0.3
         for attempt in range(GENERATION_ATTEMPTS):
             current_model = FALLBACK_MODELS[attempt % len(FALLBACK_MODELS)]
-            current_client = self.clients[(self._key_index + attempt) % len(self.clients)] if self.clients else self.client
+            current_client = self.client if (self.client and self.client not in self.clients) else (self.clients[(self._key_index + attempt) % len(self.clients)] if self.clients else self.client)
             try:
                 chat_completion = current_client.chat.completions.create(
                     messages=messages,
@@ -664,13 +680,13 @@ class RAGService:
         is_escalated = _check_strict_escalation(user_message, "")
         if lang_code == "en":
             resp_text = (
-                "I do not have that specific information in the official records. To confirm this detail for you, I will connect you with a human admissions advisor."
+                "That inquiry requires special validation from our admissions team. In just a moment, I will connect you with a live admissions advisor right here in this chat. Please share your name and WhatsApp number so we can stay in touch in case the connection is interrupted."
                 if is_escalated else
                 "A temporary connection issue occurred with the AI service. Please try again in a few moments."
             )
         else:
             resp_text = (
-                "No cuento con esa información específica en los registros oficiales. Para confirmarte este detalle, te voy a conectar con un asesor humano de admisiones."
+                "Esa consulta requiere validación especial de nuestro equipo de admisiones. En un instante te voy a comunicar con un asesor en vivo por este mismo chat. Por favor, indícame tu nombre y número de WhatsApp para mantenernos en contacto en caso de que se interrumpa la conexión."
                 if is_escalated else
                 "Ocurrió un inconveniente temporal de conexión con el servicio de IA. Por favor intenta de nuevo en unos momentos."
             )

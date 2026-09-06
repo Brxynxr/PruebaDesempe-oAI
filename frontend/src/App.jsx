@@ -78,11 +78,12 @@ function MainAppContent() {
       {/* Global Golden Particle Ambient Background */}
       <ParticleBackground />
 
-      {/* Persistent Navbar with SPA Tabs, Theme Toggle & Language Selector */}
+      {/* Persistent Navbar with SPA Tabs, Theme Toggle, Language Selector & Advisor Login */}
       <Navbar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         onOpenChat={handleOpenChat}
+        onNavigateToAdmin={() => navigateTo(isAdminAuthenticated ? '/admin' : '/admin/login')}
       />
 
       {/* Main Content: 2 clean SPA Views */}
@@ -106,7 +107,7 @@ function MainAppContent() {
       </main>
 
       {/* Persistent Footer and Floating AI Chat */}
-      <Footer />
+      <Footer onNavigateToAdmin={() => navigateTo(isAdminAuthenticated ? '/admin' : '/admin/login')} />
       <FloatingChat isOpen={isChatOpen} setIsOpen={setIsChatOpen} />
     </div>
   );

@@ -6,6 +6,7 @@ const translations = {
     homeAndPrograms: 'Home & Programs',
     modalitiesAndCert: 'Modalities & Certification',
     aiAssistant: 'AI Assistant',
+    advisorPortal: 'Advisor Login',
     
     // Hero
     heroBadge: 'ACCREDITED LANGUAGE ACADEMY',
@@ -108,24 +109,25 @@ const translations = {
     chatTyping: 'Assistant is typing...',
     chatInitialGreeting: 'Hi! I\'m Academia Lumina\'s virtual assistant. How can I help you today? You can ask me about pricing, schedules, English, French, or Portuguese levels, and enrollment.',
     chatInactivity: 'Do you have any other questions I can help you with?',
-    chatLeadTitle: 'Connect with a Personal Advisor',
+    chatLeadTitle: 'Connect with a Live Admissions Advisor',
     chatFullName: 'Your Full Name:',
-    chatPhone: 'WhatsApp / Phone Number:',
+    chatPhone: 'WhatsApp / Phone Number (Backup):',
     chatPhonePlaceholder: 'e.g. +57 300 123 4567',
     chatProgram: 'Program of Interest:',
-    chatSubmitLead: 'Request Direct Contact',
-    chatLeadSuccess: 'Great {name}! Your contact details have been sent to our admissions team. We will contact you shortly on WhatsApp (+57 {phone}).',
-    chatAdvisorPrompt: 'Would you like us to connect you with an admissions advisor to resolve your personalized inquiry?',
-    chatAdvisorYes: 'Yes, connect with advisor',
+    chatSubmitLead: 'Connect Live with Advisor',
+    chatLeadSuccess: 'Great {name}! An admissions advisor is joining this chat. We also noted your WhatsApp (+57 {phone}) in case the connection is interrupted.',
+    chatAdvisorPrompt: 'Would you like to speak directly with an admissions advisor in this chat?',
+    chatAdvisorYes: 'Yes, connect with live advisor',
     chatAdvisorNo: 'No, thanks',
     chatAdvisorDeclined: 'Understood! If you have any other questions or inquiries about our programs, I will be glad to help you. 😊'
   },
 
   es: {
     // Navbar
-    homeAndPrograms: 'Inicio & Programas',
-    modalitiesAndCert: 'Modalidades & Certificación',
+    homeAndPrograms: 'Inicio y Programas',
+    modalitiesAndCert: 'Modalidades y Certificación',
     aiAssistant: 'Asistente IA',
+    advisorPortal: 'Acceso Asesor',
     
     // Hero
     heroBadge: 'ACADEMIA DE IDIOMAS ACREDITADA',
@@ -149,8 +151,8 @@ const translations = {
     benefit2Desc: 'Estructura progresiva desde A1 (Principiante) hasta C1 (Dominio Operativo Eficaz).',
     benefit2Detail: 'Alineado con el Marco Común Europeo de Referencia para las Lenguas, válido para visas y universidades internacionales.',
     benefit3Title: 'Atención Inteligente 24/7',
-    benefit3Desc: 'Resolución instantánea de dudas con IA RAG y escalamiento directo con asesores.',
-    benefit3Detail: 'Respuestas al instante sobre horarios, programas y costos, con opción de agendamiento directo a WhatsApp.',
+    benefit3Desc: 'Resolución instantánea de dudas con IA RAG y escalamiento directo con asesores en vivo.',
+    benefit3Detail: 'Respuestas al instante sobre horarios, programas y costos, con transferencia a asesor en tiempo real y respaldo vía WhatsApp.',
     viewDetail: 'Ver detalle',
     hideDetail: 'Ocultar detalle',
 
@@ -228,15 +230,15 @@ const translations = {
     chatTyping: 'El asistente está escribiendo...',
     chatInitialGreeting: '¡Hola! Soy el asistente virtual de Academia Lumina. ¿En qué te puedo colaborar hoy? Puedes preguntarme sobre precios, horarios, niveles de inglés, francés o portugués e inscripciones.',
     chatInactivity: '¿Tienes alguna otra duda o consulta en la que te pueda colaborar?',
-    chatLeadTitle: 'Conectar con un Asesor Personalizado',
+    chatLeadTitle: 'Conectar con un Asesor de Admisiones en Vivo',
     chatFullName: 'Tu Nombre Completo:',
-    chatPhone: 'Número de WhatsApp / Teléfono:',
+    chatPhone: 'Número de WhatsApp / Teléfono (Respaldo):',
     chatPhonePlaceholder: 'Ej. 300 123 4567',
     chatProgram: 'Programa de Interés:',
-    chatSubmitLead: 'Solicitar Contacto Directo',
-    chatLeadSuccess: '¡Excelente {name}! Tus datos fueron enviados a nuestro equipo de admisiones. Te contactaremos en breve por WhatsApp (+57 {phone}).',
-    chatAdvisorPrompt: '¿Deseas que te comuniquemos con un asesor de admisiones para resolver tu consulta personalizada?',
-    chatAdvisorYes: 'Sí, conectar con asesor',
+    chatSubmitLead: 'Conectar en Vivo con Asesor',
+    chatLeadSuccess: '¡Excelente {name}! Un asesor de admisiones se conectará a este chat. Además guardamos tu WhatsApp (+57 {phone}) por si se interrumpe la conexión.',
+    chatAdvisorPrompt: '¿Deseas hablar directamente con un asesor de admisiones en vivo por este chat?',
+    chatAdvisorYes: 'Sí, conectar con asesor en vivo',
     chatAdvisorNo: 'No, gracias',
     chatAdvisorDeclined: '¡De acuerdo! Si tienes alguna otra duda o consulta sobre nuestros programas, con mucho gusto aquí estaré para colaborarte. 😊'
   }

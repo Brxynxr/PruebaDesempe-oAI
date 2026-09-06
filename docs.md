@@ -96,9 +96,13 @@ Para resolver este desafío de manera profesional, escalable y segura, se constr
 * **Opción elegida:** Interfaz web SPA desarrollada en React 18 con Vite, servida en producción mediante un contenedor optimizado Nginx Alpine.
 * **Razonamiento técnico:** Permite ofrecer a los estudiantes una experiencia inmersiva con cambio de idioma instantáneo (i18n), dos paletas de color con alto contraste WCAG, soporte de accesibilidad (*prefers-reduced-motion*), un chat flotante reactivo y un formulario de contacto guiado.
 
-### 2.6 Mecanismo de Escalamiento Híbrido y Confirmación Interactiva
-* **Opción elegida:** Escalamiento determinista por reglas de contexto + confirmación interactiva con botones **[Sí, conectar]** / **[No, gracias]**.
-* **Razonamiento técnico:** Evita el problema clásico de los agentes conversacionales que abren formularios de manera invasiva. Cuando el asistente detecta que la pregunta no está en los registros oficiales (ej. estacionamiento o disputas de pago), ofrece la opción amablemente. Si el usuario acepta, se abre el formulario; si declina, el asistente continúa la conversación sin forzar la captura de datos.
+### 2.6 Mecanismo de Escalamiento Híbrido, Extracción de Contacto e Integración Omnicanal con Telegram
+* **Opción elegida:** Escalamiento determinista por reglas de contexto + extracción regex inteligente de Nombre y Teléfono/WhatsApp + Notificación interactiva a Telegram con WebSockets bidireccionales.
+* **Razonamiento técnico:** Cuando el asistente detecta una consulta fuera de alcance o solicitud explícita de asesor, responde amablemente y extrae los datos de contacto suministrados por el estudiante. Inmediatamente envía una alerta estructurada al canal/grupo de Telegram de los asesores con:
+  - Pregunta/Duda exacta sin resolver.
+  - Nombre y WhatsApp del estudiante.
+  - Botones interactivos en Telegram: `[🙋‍♂️ Tomar Caso]` (asigna el chat en tiempo real y abre el canal bidireccional), `[✅ Caso Resuelto]` (finaliza la atención) y `[💬 Abrir WhatsApp]` (enlace directo al chat).
+  - Control de ruido: los mensajes sueltos de los estudiantes no inundan Telegram antes de que un asesor acepte el caso.
 
 ### 2.7 Las 4 Capas de Ciberseguridad
 1. **Rate Limiting por IP Real Sanitizada:** Límite configurable (10 peticiones/minuto por cliente) con resolución segura de cabeceras `X-Forwarded-For` y `X-Real-IP`.
@@ -106,9 +110,12 @@ Para resolver este desafío de manera profesional, escalable y segura, se constr
 3. **Guardrails Anti-Prompt Injection:** Pipeline de normalización de texto Unicode NFKD, traducción de *leetspeak* y bloqueo por expresiones regulares antes de invocar al LLM.
 4. **Sanitización XSS y Redacción de PII:** Redacción automática de documentos de identidad en respuestas y escape de entidades HTML en correos electrónicos.
 
-### 2.8 Extras Implementados: Caché TTL y Métricas en Tiempo Real
+### 2.8 Extras Implementados: Caché TTL, Auto-Limpieza de Casos (30 min) y Panel de Operaciones
 * **Caché TTL en Memoria (`ResponseCache`):** Almacén con clave normalizada que responde preguntas frecuentes idénticas en menos de 10 ms con 0 consumo de tokens.
-* **Servicio de Métricas (`MetricsService`):** Registro en vivo de consultas totales, tasa de acierto de caché (*hit rate*), tasa de escalamiento y estimación de costos en dólares, consultable vía `GET /api/v1/metrics`.
+* **Auto-Limpieza Programada de Casos Resueltos (`CleanupService`):** Proceso asíncrono en segundo plano que purga automáticamente de la base de datos cualquier conversación resuelta cuya antigüedad sea superior a 30 minutos.
+* **Tarjeta de Resumen Ejecutivo en Dashboard:** Vista optimizada para el asesor que presenta un resumen condensado del ticket en lugar de un historial extenso, con opción de expandir el transcript completo.
+* **Guardia de Seguridad para Envío de Mensajes:** Bloqueo de entrada en frontend y validación HTTP 400 en backend que exige que un asesor tome el caso antes de poder responder.
+* **Centro de Métricas & SLAs (`MetricsService`):** Métricas en vivo de tasa de resolución autónoma por IA, tokens ahorrados, costos de inferencia LPU en USD, cumplimiento de SLA de latencia, CSAT y desglose de base de datos por estado e idioma (`GET /api/v1/metrics`).
 
 ---
 
@@ -1141,7 +1148,7 @@ docker compose up -d --build
 ```
 
 * **Frontend Web (Estudiantes):** `http://localhost:3000`
-* **Panel de Asesores & Bandeja en Vivo:** `http://localhost:3000/admin/login` (*Usuario: `admin` / Contraseña: `admin123`*)
+* **Panel de Asesores & Bandeja en Vivo:** `http://localhost:3000/admin/login` (*Credenciales por defecto exclusivas para desarrollo local: Usuario: `admin` / Contraseña: `admin123` — en cualquier despliegue de producción deben suministrarse obligatoriamente mediante variables de entorno `ADMIN_USERNAME`, `ADMIN_PASSWORD` y `JWT_SECRET_KEY`*)
 * **Swagger API Docs:** `http://localhost:8000/docs`
 * **Endpoint de Métricas (Dual Auth):** `http://localhost:8000/api/v1/metrics`
 * **Consola n8n:** `http://localhost:5678`

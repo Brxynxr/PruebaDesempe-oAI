@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from app.schemas.chat import ChatRequest, ChatResponse, LeadRequest
 from app.services.rag_service import RAGService
 from app.services.email_service import EmailService
+from app.services.telegram_service import TelegramService
 from app.core.security import verify_api_key, limiter
 from app.core.guardrails import validate_prompt_injection
 from app.core.config import settings
@@ -56,12 +57,18 @@ async def handle_chat_message(
         # Logging error without breaking response flow
         pass
 
-    # If escalated, alert agents via real-time WebSocket broadcast and async email
+    # If escalated, alert agents via real-time WebSocket broadcast, async email, and Telegram
     if response.is_escalated:
         EmailService.send_escalation_email_async(
             user_message=payload.message,
             assistant_response=response.response,
             session_id=payload.session_id
+        )
+        TelegramService.send_escalation_alert(
+            user_message=payload.message,
+            assistant_response=response.response,
+            session_id=payload.session_id,
+            whatsapp_link=response.whatsapp_link
         )
         await manager.broadcast_to_agents({
             "type": "new_escalation",
@@ -75,7 +82,7 @@ async def handle_chat_message(
 
 @router.post(
     "/chat/lead",
-    summary="Register student lead and notify advisor via email with direct WhatsApp link"
+    summary="Register student lead and notify advisor via email/telegram with direct WhatsApp link"
 )
 @limiter.limit(settings.RATE_LIMIT_PER_MINUTE)
 def handle_lead_submission(
@@ -102,6 +109,13 @@ def handle_lead_submission(
         pass
 
     EmailService.send_lead_email_async(
+        student_name=payload.name,
+        student_phone=payload.phone,
+        program=payload.program,
+        user_message=payload.user_message,
+        session_id=payload.session_id
+    )
+    TelegramService.send_lead_alert(
         student_name=payload.name,
         student_phone=payload.phone,
         program=payload.program,

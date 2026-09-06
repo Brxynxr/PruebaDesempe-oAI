@@ -54,12 +54,14 @@ def test_english_query_uses_english_few_shots():
 
 def test_groq_api_failure_fallback_multilingual():
     """Verify fallback response on Groq API failure in Spanish and English."""
+    response_cache.clear()
     service = RAGService()
     
     # Mock client.chat.completions.create to raise an Exception
     mock_client = MagicMock()
     mock_client.chat.completions.create.side_effect = Exception("Groq connection timeout")
     service.client = mock_client
+    service.clients = [mock_client]
     
     # Test Spanish fallback
     res_es = service.generate_response(user_message="¿Qué horarios tienen?", language="es")

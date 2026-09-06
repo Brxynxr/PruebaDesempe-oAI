@@ -91,3 +91,8 @@ def seed_initial_admin(db: Session) -> None:
         new_admin = AdminUser(username=admin_user, password_hash=hashed)
         db.add(new_admin)
         db.commit()
+    else:
+        # If env password changed, synchronize password hash in database
+        if not verify_password(admin_pass, existing.password_hash):
+            existing.password_hash = hash_password(admin_pass)
+            db.commit()

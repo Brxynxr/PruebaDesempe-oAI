@@ -1,6 +1,7 @@
 import os
 import shutil
 import logging
+from datetime import datetime, timezone
 from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Query, Request
 from sqlalchemy.orm import Session
@@ -24,7 +25,9 @@ from app.schemas.admin import (
     ConversationDetail, 
     MessageOut, 
     DocumentUploadResponse, 
-    AgentMessageRequest
+    AgentMessageRequest,
+    ConversationUpdateRequest,
+    ConversationCreateRequest
 )
 from app.services.ingestion_service import IngestionService
 from app.db.vector_store import VectorStore
@@ -81,7 +84,7 @@ async def upload_and_reindex_document(
             detail="Solo se permiten archivos de texto Markdown con extensión .md"
         )
 
-    data_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "data")
+    data_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))), "data")
     os.makedirs(data_dir, exist_ok=True)
     
     file_path = os.path.join(data_dir, file.filename)
@@ -148,10 +151,16 @@ def list_all_conversations(
 ):
     """
     Lists all conversations in the database.
+    Automatically prunes resolved conversations older than 30 minutes.
     """
+    ConversationRepository.cleanup_old_resolved_conversations(db, max_age_minutes=30)
+    
     stmt = select(Conversation)
-    if estado:
+    if estado and estado != "all":
         stmt = stmt.where(Conversation.estado == estado)
+    elif not estado:
+        # Por defecto solo mostrar conversaciones escaladas a asesores
+        stmt = stmt.where(Conversation.estado.in_(["pendiente", "en_atencion", "resuelto"]))
     stmt = stmt.order_by(Conversation.updated_at.desc())
     convs = list(db.scalars(stmt).all())
     
@@ -313,10 +322,32 @@ async def send_agent_message(
 ):
     """
     Appends an agent message to the conversation and dispatches it immediately via WebSocket to the student.
+    Strictly validates that the conversation has been claimed by an advisor before allowing responses.
     """
     conv = ConversationRepository.get_conversation_by_id(db, conversation_id)
     if not conv:
         raise HTTPException(status_code=404, detail="Conversación no encontrada.")
+
+    # Validation 1: Case must be claimed before sending messages
+    if conv.estado == "pendiente":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Debes tomar el caso ('Tomar Caso') antes de poder responder al estudiante."
+        )
+
+    # Validation 2: Cannot send messages to resolved conversations
+    if conv.estado == "resuelto":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Esta conversación ya está marcada como resuelta. No se pueden enviar nuevos mensajes."
+        )
+
+    # Validation 3: Cannot send messages if assigned to another advisor (superadmin 'admin' can override)
+    if conv.agente_asignado and conv.agente_asignado != current_user.username and current_user.username != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Este caso está asignado al asesor '{conv.agente_asignado}'. No puedes responder en su nombre."
+        )
 
     # Store agent message in DB
     msg = ConversationRepository.add_message(db, conv.id, remitente="agent", contenido=payload.message)
@@ -335,6 +366,131 @@ async def send_agent_message(
         "message_id": msg.id,
         "timestamp": msg.timestamp
     }
+
+@router.post("/conversations", response_model=ConversationDetail, summary="Create a manual or simulated conversation")
+def create_conversation(
+    payload: ConversationCreateRequest,
+    current_user: AdminUser = Depends(get_current_admin_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Creates a new conversation ticket from the admin backoffice.
+    """
+    conv = ConversationRepository.create_custom_conversation(
+        db,
+        session_id=payload.session_id,
+        idioma=payload.idioma or "es",
+        estado=payload.estado or "pendiente",
+        initial_message=payload.initial_message
+    )
+    messages_out = [
+        MessageOut(
+            id=m.id,
+            remitente=m.remitente,
+            contenido=m.contenido,
+            timestamp=m.timestamp
+        ) for m in conv.messages
+    ]
+    return ConversationDetail(
+        id=conv.id,
+        session_id=conv.session_id,
+        idioma=conv.idioma,
+        estado=conv.estado,
+        agente_asignado=conv.agente_asignado,
+        created_at=conv.created_at,
+        updated_at=conv.updated_at,
+        messages=messages_out
+    )
+
+@router.put("/conversations/{conversation_id}", response_model=ConversationDetail, summary="Update conversation status, language or assigned advisor")
+async def update_conversation_status(
+    conversation_id: int,
+    payload: ConversationUpdateRequest,
+    current_user: AdminUser = Depends(get_current_admin_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Updates conversation fields (estado, agente_asignado, idioma).
+    """
+    conv = ConversationRepository.update_conversation(
+        db,
+        conversation_id=conversation_id,
+        estado=payload.estado,
+        agente_asignado=payload.agente_asignado,
+        idioma=payload.idioma
+    )
+    if not conv:
+        raise HTTPException(status_code=404, detail="Conversación no encontrada.")
+
+    # Broadcast update to agents
+    await manager.broadcast_to_agents({
+        "type": "conversation_updated",
+        "conversation_id": conv.id,
+        "estado": conv.estado,
+        "agente_asignado": conv.agente_asignado
+    })
+
+    messages_out = [
+        MessageOut(
+            id=m.id,
+            remitente=m.remitente,
+            contenido=m.contenido,
+            timestamp=m.timestamp
+        ) for m in conv.messages
+    ]
+    return ConversationDetail(
+        id=conv.id,
+        session_id=conv.session_id,
+        idioma=conv.idioma,
+        estado=conv.estado,
+        agente_asignado=conv.agente_asignado,
+        created_at=conv.created_at,
+        updated_at=conv.updated_at,
+        messages=messages_out
+    )
+
+@router.delete("/conversations/clear-all", summary="Purge and clean all conversations and test records from database")
+async def clear_all_conversations(
+    current_user: AdminUser = Depends(get_current_admin_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Cleans all conversations and messages from database.
+    """
+    deleted_count = ConversationRepository.purge_all_conversations(db)
+
+    # Broadcast reset to all connected agents
+    await manager.broadcast_to_agents({
+        "type": "conversation_deleted",
+        "conversation_id": "all"
+    })
+
+    return {
+        "status": "cleared",
+        "deleted_count": deleted_count,
+        "message": f"Se eliminaron {deleted_count} conversaciones y se limpió la base de datos."
+    }
+
+@router.delete("/conversations/{conversation_id}", summary="Delete a conversation and its messages")
+async def delete_conversation(
+    conversation_id: int,
+    current_user: AdminUser = Depends(get_current_admin_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Permanently deletes a conversation and all its messages.
+    """
+    success = ConversationRepository.delete_conversation(db, conversation_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Conversación no encontrada.")
+
+    # Broadcast deletion to agents
+    await manager.broadcast_to_agents({
+        "type": "conversation_deleted",
+        "conversation_id": conversation_id
+    })
+
+    return {"status": "deleted", "conversation_id": conversation_id, "message": "Conversación eliminada correctamente."}
 
 @router.get("/conversations/sla/breached", summary="Get pending conversations breaching SLA threshold (for n8n & monitoring)")
 def get_sla_breached_conversations(

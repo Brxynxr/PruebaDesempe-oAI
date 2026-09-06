@@ -122,6 +122,26 @@ class ConversationRepository:
         return conv
 
     @staticmethod
+    def cleanup_old_resolved_conversations(db: Session, max_age_minutes: int = 30) -> int:
+        """
+        Deletes all conversations in 'resuelto' state that were resolved more than max_age_minutes ago.
+        """
+        cutoff_time = datetime.now(timezone.utc) - timedelta(minutes=max_age_minutes)
+        stmt = select(Conversation).where(
+            Conversation.estado == "resuelto",
+            Conversation.updated_at <= cutoff_time
+        )
+        resolved_convs = list(db.scalars(stmt).all())
+        count = len(resolved_convs)
+        for conv in resolved_convs:
+            for msg in conv.messages:
+                db.delete(msg)
+            db.delete(conv)
+        if count > 0:
+            db.commit()
+        return count
+
+    @staticmethod
     def get_sla_breached_conversations(db: Session, threshold_minutes: int = 10) -> List[Conversation]:
         """
         Returns conversations in 'pendiente' state with more than threshold_minutes without being claimed.
@@ -132,3 +152,111 @@ class ConversationRepository:
             Conversation.updated_at <= cutoff_time
         ).order_by(Conversation.updated_at)
         return list(db.scalars(stmt).all())
+
+    @staticmethod
+    def delete_conversation(db: Session, conversation_id: int) -> bool:
+        """
+        Deletes a conversation and its messages.
+        """
+        conv = ConversationRepository.get_conversation_by_id(db, conversation_id)
+        if not conv:
+            return False
+        # Delete associated messages first
+        for msg in conv.messages:
+            db.delete(msg)
+        db.delete(conv)
+        db.commit()
+        return True
+
+    @staticmethod
+    def update_conversation(
+        db: Session, 
+        conversation_id: int, 
+        estado: Optional[str] = None, 
+        agente_asignado: Optional[str] = None,
+        idioma: Optional[str] = None
+    ) -> Optional[Conversation]:
+        conv = ConversationRepository.get_conversation_by_id(db, conversation_id)
+        if not conv:
+            return None
+        if estado is not None:
+            conv.estado = estado
+        if agente_asignado is not None:
+            conv.agente_asignado = agente_asignado
+        if idioma is not None:
+            conv.idioma = idioma
+        conv.updated_at = datetime.now(timezone.utc)
+        db.commit()
+        db.refresh(conv)
+        return conv
+
+    @staticmethod
+    def create_custom_conversation(
+        db: Session,
+        session_id: str,
+        idioma: str = "es",
+        estado: str = "pendiente",
+        initial_message: Optional[str] = None
+    ) -> Conversation:
+        conv = Conversation(
+            session_id=session_id,
+            idioma=idioma,
+            estado=estado,
+            agente_asignado=None
+        )
+        db.add(conv)
+        db.commit()
+        db.refresh(conv)
+        if initial_message:
+            ConversationRepository.add_message(db, conv.id, remitente="user", contenido=initial_message)
+            db.refresh(conv)
+        return conv
+
+    @staticmethod
+    def purge_all_conversations(db: Session) -> int:
+        """
+        Deletes all conversations and messages from database to clean test data.
+        """
+        count = db.query(Conversation).count()
+        db.query(Message).delete()
+        db.query(Conversation).delete()
+        db.commit()
+        return count
+
+    @staticmethod
+    def get_conversation_stats(db: Session) -> Dict[str, Any]:
+        """
+        Calculates conversation statistics from the SQLite database:
+        - Total conversations
+        - Count by status (pendiente, en_atencion, resuelto, bot)
+        - Count by language (es, en, fr, pt)
+        - Total messages recorded
+        """
+        total = db.query(Conversation).count()
+        pending = db.query(Conversation).filter(Conversation.estado == "pendiente").count()
+        in_progress = db.query(Conversation).filter(Conversation.estado == "en_atencion").count()
+        resolved = db.query(Conversation).filter(Conversation.estado == "resuelto").count()
+        bot_only = db.query(Conversation).filter(Conversation.estado == "bot").count()
+        
+        # Languages
+        lang_es = db.query(Conversation).filter(Conversation.idioma == "es").count()
+        lang_en = db.query(Conversation).filter(Conversation.idioma == "en").count()
+        lang_fr = db.query(Conversation).filter(Conversation.idioma == "fr").count()
+        lang_pt = db.query(Conversation).filter(Conversation.idioma == "pt").count()
+        
+        total_messages = db.query(Message).count()
+        
+        return {
+            "total_conversations": total,
+            "pending_conversations": pending,
+            "in_progress_conversations": in_progress,
+            "resolved_conversations": resolved,
+            "bot_conversations": bot_only,
+            "languages": {
+                "es": lang_es,
+                "en": lang_en,
+                "fr": lang_fr,
+                "pt": lang_pt
+            },
+            "total_messages": total_messages
+        }
