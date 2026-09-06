@@ -33,16 +33,19 @@ class LeadRequest(BaseModel):
     @classmethod
     def validate_name(cls, v: str) -> str:
         cleaned = v.strip()
-        if len(cleaned) < 2:
-            raise ValueError("Name must be at least 2 characters long.")
+        import re
+        if not re.search(r'[a-zA-ZáéíóúÁÉÍÓÚñÑ]{2,}', cleaned):
+            raise ValueError("El nombre debe contener al menos 2 caracteres alfabéticos válidos.")
         return cleaned
 
     @field_validator('phone')
     @classmethod
     def validate_phone(cls, v: str) -> str:
         cleaned = v.strip()
-        if len(cleaned) < 7:
-            raise ValueError("Phone number must have at least 7 digits.")
+        import re
+        digits = re.sub(r'\D', '', cleaned)
+        if not (7 <= len(digits) <= 15):
+            raise ValueError("El número telefónico o WhatsApp debe contener entre 7 y 15 dígitos numéricos válidos.")
         return cleaned
 
 class SourceDocument(BaseModel):

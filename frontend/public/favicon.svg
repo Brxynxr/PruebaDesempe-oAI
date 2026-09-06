@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <defs>
+    <linearGradient id="luminaGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1A1815" />
+      <stop offset="100%" stop-color="#2D2824" />
+    </linearGradient>
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F5B942" />
+      <stop offset="100%" stop-color="#D97706" />
+    </linearGradient>
+  </defs>
+  <rect width="100" height="100" rx="28" fill="url(#luminaGrad)" />
+  <circle cx="76" cy="24" r="7.5" fill="url(#goldGrad)" />
+  <text x="46" y="73" font-family="'Fraunces', Georgia, serif" font-size="64" font-weight="600" font-style="italic" fill="#FAF7F2" text-anchor="middle">L</text>
+</svg>

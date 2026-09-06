@@ -6,26 +6,24 @@ PROMPT_INJECTION_PATTERNS = [
     r"ignore\s+(all\s+)?(previous|prior|above|system|existing)\s+instructions",
     r"forget\s+(all\s+)?(previous|prior|system)\s+instructions",
     r"disregard\s+(all\s+)?(previous|prior|system|above|constraints)",
-    r"system\s+(prompt|instructions|directive|message|rules)",
-    r"reveal\s+(the\s+)?(system\s+)?prompt",
+    r"system\s+prompt",
     r"revela\s+(el\s+)?(system\s+)?prompt",
+    r"reveal\s+(the\s+)?(system\s+)?prompt",
     r"show\s+(me\s+)?(the\s+)?(system\s+)?prompt",
-    r"muestra\s+(el\s+)?(prompt|sistema)",
+    r"muestra\s+(el\s+)?(system\s+)?prompt",
     r"output\s+(your\s+)?(initial|system)\s+prompt",
     r"you\s+are\s+now\s+an?\s+(unrestricted|unfiltered|jailbroken)\s+ai",
     r"act\s+as\s+(an?\s+)?(unrestricted|unfiltered|evil|jailbroken)\s+(ai|bot|assistant)",
     r"do\s+anything\s+now",
     r"dan\s+mode",
     r"jailbreak",
-    r"ignore\s+above",
-    r"override\s+(the\s+)?system",
-    r"ignora\s+(todas\s+las\s+|las\s+)?instrucciones",
-    r"olvida\s+(todas\s+las\s+|las\s+)?instrucciones",
+    r"override\s+(the\s+)?system\s+instructions",
+    r"ignora\s+(todas\s+las\s+|las\s+|tus\s+)?instrucciones(\s+previas|\s+anteriores)?",
+    r"olvida\s+(todas\s+las\s+|las\s+|tus\s+)?instrucciones(\s+previas|\s+anteriores)?",
     r"ahora\s+eres\s+un[a]?\s+ia\s+sin\s+reglas",
     r"pretend\s+you(\s+are)?\s+(unrestricted|god)",
     r"bypass\s+(all\s+)?(filter|security|safety)",
-    r"follow\s+these\s+new\s+instructions",
-    r"repeat\s+after\s+me",
+    r"repeat\s+after\s+me\s+verbatim",
 ]
 
 # Character mappings to neutralize leetspeak evasion attempts
@@ -73,5 +71,5 @@ def validate_prompt_injection(message: str) -> None:
         if re.search(pattern, normalized):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Request rejected: potential prompt manipulation detected."
+                detail="Tu mensaje no pudo ser procesado por motivos de seguridad (posible manipulación de directivas del sistema)."
             )

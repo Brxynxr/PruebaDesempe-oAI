@@ -1,5 +1,7 @@
 {
+  "id": "I5QMkwMWKbBbL7Y7",
   "name": "Academia Lumina - Reporte Diario Telegram y Desempeño RAG",
+  "active": true,
   "nodes": [
     {
       "parameters": {
@@ -10,11 +12,11 @@
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.1,
       "position": [
-        250,
+        240,
         300
       ],
-      "id": "schedule-trigger-daily-8am",
-      "name": "Diario a las 8:00 AM"
+      "id": "schedule-trigger-daily",
+      "name": "Reporte Diario 8:00 AM"
     },
     {
       "parameters": {
@@ -25,7 +27,7 @@
           "parameters": [
             {
               "name": "X-API-Key",
-              "value": "={{ $env.BACKEND_API_KEY || 'lumina_dev_api_key_2026' }}"
+              "value": "lumina_dev_api_key_2026"
             },
             {
               "name": "Content-Type",
@@ -50,7 +52,7 @@
         "url": "https://api.telegram.org/bot8856257947:AAF3buxaPS5fSmBQWPY0IG6GCjwPEdR_oyU/sendMessage",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"chat_id\": \"7761516818\",\n  \"text\": \"📊 <b>REPORTE DIARIO DE OPERACIONES N8N — ACADEMIA LUMINA</b>\\n\\n📈 <b>Total Consultas:</b> \" + $json.total_queries + \"\\n⚡ <b>Tasa Caché Semántico:</b> \" + $json.cache_hit_rate_percentage + \"\\n⚠️ <b>Tasa Escalamiento:</b> \" + $json.escalation_rate_percentage + \"\\n🔢 <b>Tokens Consumidos:</b> \" + $json.total_tokens + \"\\n💵 <b>Costo Estimado:</b> \" + $json.estimated_cost_usd + \"\\n\\n<i>Generado automáticamente a las 8:00 AM por n8n.</i>\",\n  \"parse_mode\": \"HTML\"\n}",
+        "jsonBody": "={{ JSON.stringify({ chat_id: '7761516818', text: '📊 <b>INFORME EJECUTIVO DE OPERACIONES — LUMINA AI</b>\\n📅 <i>Métricas de desempeño RAG y atención</i>\\n\\n⚡ <b>Rendimiento del Asistente:</b>\\n• <b>Consultas Totales:</b> ' + ($json.total_queries || 0) + '\\n• <b>Resolución por IA:</b> ' + ($json.ai_resolution_rate_pct != null ? $json.ai_resolution_rate_pct + '%' : '100%') + '\\n• <b>Acierto en Caché:</b> ' + ($json.cache_hit_rate_pct != null ? $json.cache_hit_rate_pct + '%' : '0%') + '\\n• <b>Tasa de Escalamiento:</b> ' + ($json.escalation_rate_pct != null ? $json.escalation_rate_pct + '%' : '0%') + '\\n• <b>Cumplimiento SLA:</b> ' + ($json.sla_compliance_pct != null ? $json.sla_compliance_pct + '%' : '100%') + '\\n• <b>Latencia Promedio:</b> ' + ($json.avg_rag_latency_seconds || '0.0') + 's\\n\\n💰 <b>Consumo de Recursos:</b>\\n• <b>Tokens Procesados:</b> ' + ($json.total_tokens || 0) + '\\n• <b>Costo Estimado:</b> ' + ($json.estimated_cost_usd || '$0.00 USD') + '\\n• <b>Ahorro por Caché:</b> ' + ($json.cost_saved_usd || '$0.00 USD') + '\\n\\n👥 <b>Actividad en CRM:</b>\\n• <b>Conversaciones:</b> ' + ($json.db_stats ? $json.db_stats.total_conversations : 'N/A') + '\\n• <b>Resueltas:</b> ' + ($json.db_stats ? $json.db_stats.resolved_conversations : '0') + '\\n• <b>Pendientes / En Curso:</b> ' + ($json.db_stats ? ($json.db_stats.pending_conversations + $json.db_stats.in_progress_conversations) : '0') + '\\n\\n✨ <i>Informe generado automáticamente por Lumina AI.</i>', parse_mode: 'HTML', reply_markup: { inline_keyboard: [ [ { text: '👉 Acceder al Panel Administrativo', url: 'http://localhost:3000/admin' } ] ] } }) }}",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
@@ -64,7 +66,7 @@
     }
   ],
   "connections": {
-    "Diario a las 8:00 AM": {
+    "Reporte Diario 8:00 AM": {
       "main": [
         [
           {
@@ -92,5 +94,7 @@
       ]
     }
   },
-  "settings": {}
+  "settings": {
+    "executionOrder": "v1"
+  }
 }

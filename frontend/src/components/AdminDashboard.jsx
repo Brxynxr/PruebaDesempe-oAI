@@ -1,1302 +1,1383 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  Headphones, 
-  FileUp, 
-  BarChart3, 
-  LogOut, 
-  RefreshCw, 
-  CheckCircle, 
-  AlertCircle, 
-  Clock, 
-  UserCheck, 
-  Send, 
-  ArrowLeft, 
-  MessageSquare, 
-  CheckCheck,
-  Globe,
-  Sun,
-  Moon,
-  UploadCloud,
+import {
+  Inbox,
   FileText,
-  DollarSign,
-  Activity,
-  Zap,
-  Sparkles,
+  BarChart3,
+  LogOut,
+  Send,
+  User,
+  CheckCircle2,
   Trash2,
-  Plus,
+  Upload,
+  RefreshCw,
+  Volume2,
+  VolumeX,
+  Clock,
+  Sparkles,
+  Phone,
+  BookOpen,
+  Check,
   Search,
-  ExternalLink,
-  MessageCircle,
-  Tag
+  MessageSquare,
+  Shield,
+  Loader2,
+  CheckSquare,
+  Square,
+  MinusSquare
 } from 'lucide-react';
-import { 
-  getAdminUsername, 
-  removeAdminToken, 
+import {
+  getAdminProfile,
   getAdminToken,
-  getPendingConversations, 
-  getAllConversations, 
-  getConversationDetail, 
-  claimConversation, 
-  resolveConversation, 
-  sendAgentMessage, 
-  createConversation,
-  updateConversation,
+  removeAdminToken,
+  getAdminUsername,
+  getAdminRole,
+  getAdminFullName,
+  getAllConversations,
+  getPendingConversations,
+  getConversationDetail,
+  claimConversation,
+  resolveConversation,
+  sendAgentMessage,
   deleteConversation,
-  clearAllConversations,
-  uploadMarkdownDocument, 
+  bulkDeleteConversations,
+  getDocuments,
+  uploadDocument,
+  deleteDocument,
   getMetrics,
-  WS_BASE_URL 
+  WS_BASE_URL
 } from '../services/api';
-import { useLanguage } from '../context/LanguageContext';
-import { useTheme } from '../context/ThemeContext';
 
-export default function AdminDashboard({ onLogout, onBackToSite }) {
-  const { language, toggleLanguage } = useLanguage();
-  const { theme, toggleTheme } = useTheme();
-  const [activeTab, setActiveTab] = useState('inbox'); // 'inbox' | 'documents' | 'metrics'
-  const rawAdminName = getAdminUsername();
-  const advisorName = rawAdminName === 'admin' ? 'Asesor Principal' : (rawAdminName || 'Asesor Lumina');
+function renderInlineFormatting(text) {
+  if (!text) return null;
+  const parts = [];
+  let lastIndex = 0;
+  const regex = /\*\*(.*?)\*\*|\*(.*?)\*/g;
+  let match;
 
-  // INBOX / LIVE CHAT STATE
-  const [conversations, setConversations] = useState([]);
-  const [selectedConvId, setSelectedConvId] = useState(null);
-  const [activeConversation, setActiveConversation] = useState(null);
-  const [agentInput, setAgentInput] = useState('');
-  const [loadingConversations, setLoadingConversations] = useState(false);
-  const [sendingMessage, setSendingMessage] = useState(false);
-  const [filterStatus, setFilterStatus] = useState('pendiente'); // 'pendiente' | 'en_atencion' | 'all'
-  const [searchQuery, setSearchQuery] = useState('');
-  const [showNewModal, setShowNewModal] = useState(false);
-  const [newSessionId, setNewSessionId] = useState('');
-  const [newInitialMsg, setNewInitialMsg] = useState('');
-  const [newLang, setNewLang] = useState('es');
-  const [showFullTranscript, setShowFullTranscript] = useState(false);
-  const [chatError, setChatError] = useState('');
-  const chatScrollRef = useRef(null);
-
-  // Helper to extract executive summary for advisor view
-  const extractConversationSummary = (conv) => {
-    if (!conv || !conv.messages || conv.messages.length === 0) {
-      return {
-        studentName: 'Estudiante Lumina',
-        phone: 'No registrado',
-        mainQuery: conv?.last_message || 'Consulta de información académica',
-        latestQuery: null,
-        detectedProgram: 'Academia Lumina',
-        topicCategory: 'Información General',
-        initialTime: conv?.created_at ? new Date(conv.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Reciente',
-        totalMessages: 0
-      };
+  while ((match = regex.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push(text.slice(lastIndex, match.index));
     }
+    const boldText = match[1] || match[2];
+    parts.push(
+      <strong key={match.index} className="font-semibold text-ink">
+        {boldText}
+      </strong>
+    );
+    lastIndex = regex.lastIndex;
+  }
 
-    const userMessages = conv.messages.filter(m => m.remitente === 'user').map(m => m.contenido.trim());
-    const allUserText = userMessages.join(' \n ');
+  if (lastIndex < text.length) {
+    parts.push(text.slice(lastIndex));
+  }
 
-    // Extract Phone / WhatsApp
-    const phoneMatch = allUserText.match(/(?:\+?57\s*)?(?:3\d{2}[\s.-]?\d{3}[\s.-]?\d{4}|\b\d{7,10}\b)/);
-    const phone = phoneMatch ? phoneMatch[0] : null;
+  return parts.length > 0 ? parts : text;
+}
 
-    // Extract Name patterns
-    let studentName = null;
-    const namePatternMatch = allUserText.match(/(?:mi nombre es|me llamo|nombre[:\s]+|soy)\s+([A-Za-zÀ-ÿ]+(?:\s+[A-Za-zÀ-ÿ]+)?)/i);
-    if (namePatternMatch) {
-      studentName = namePatternMatch[1].trim();
-    } else {
-      for (const msg of userMessages) {
-        const clean = msg.replace(/[^\w\s]/g, '').trim();
-        const words = clean.split(/\s+/).filter(w => w.length > 2);
-        if (
-          words.length >= 1 && 
-          words.length <= 3 && 
-          !/^(hola|holaa|buenas|gracias|quiero|tienen|cuanto|como|que|donde|cuando|por|para|estoy|me|si|no|ok|vale)$/i.test(words[0]) &&
-          !/\d/.test(msg)
-        ) {
-          studentName = clean;
-          break;
-        }
-      }
+function FormattedAdvisorMessage({ text, isAgent = false }) {
+  if (!text) return null;
+
+  // Handle lead registration info specially (Discrete clean card without showing raw technical history)
+  if (text.startsWith('[Lead Registrado]')) {
+    const raw = text.replace('[Lead Registrado]', '').trim();
+    const nameMatch = raw.match(/Nombre:\s*([^,]+)/i);
+    const phoneMatch = raw.match(/Tel:\s*([^,]+)/i);
+    const progMatch = raw.match(/Programa:\s*([^,]+)/i);
+
+    const name = nameMatch ? nameMatch[1].trim() : 'Estudiante';
+    const prog = progMatch ? progMatch[1].trim() : 'General';
+    const phone = phoneMatch ? phoneMatch[1].trim() : '';
+
+    return (
+      <div className="rounded-2xl bg-amber-50 border border-amber-200/80 p-3.5 text-xs text-ink space-y-2 shadow-xs">
+        <div className="font-bold text-amber-950 flex items-center gap-1.5 pb-1.5 border-b border-amber-200/60">
+          <Phone size={13} className="text-amber-800" />
+          <span>Solicitud de Asesoría Recibida</span>
+        </div>
+        <div className="grid grid-cols-2 gap-2 text-[11px]">
+          <div>
+            <span className="text-ink/60 block">Estudiante:</span>
+            <span className="font-semibold text-ink">{name}</span>
+          </div>
+          <div>
+            <span className="text-ink/60 block">Programa de Interés:</span>
+            <span className="font-semibold text-brand">{prog}</span>
+          </div>
+        </div>
+        {phone && (
+          <div className="pt-1 text-[11px] text-ink/70">
+            <span className="text-ink/60">Contacto registrado: </span>
+            <span className="font-mono font-medium">+{phone.replace(/^\+/, '')}</span>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Pre-process text: normalize <br>, remove raw html artifacts
+  const cleanText = text
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/?[bi]>/gi, '')
+    .replace(/&nbsp;/gi, ' ');
+
+  const lines = cleanText.split('\n');
+  const elements = [];
+  let currentList = [];
+
+  const flushList = () => {
+    if (currentList.length > 0) {
+      elements.push(
+        <ul key={`list-${elements.length}`} className="my-1.5 space-y-1.5 pl-1.5">
+          {currentList.map((item, idx) => (
+            <li key={idx} className={`flex items-start gap-2 text-xs leading-relaxed ${isAgent ? 'text-cream/90' : 'text-ink/90'}`}>
+              <span className={`mt-1.5 size-1.5 shrink-0 rounded-full ${isAgent ? 'bg-gold' : 'bg-brand/70'}`} />
+              <div className="flex-1">{renderInlineFormatting(item)}</div>
+            </li>
+          ))}
+        </ul>
+      );
+      currentList = [];
     }
-
-    // Filter out greeting messages to isolate the substantive inquiry
-    const substantiveQueries = userMessages.filter(msg => {
-      const clean = msg.toLowerCase().replace(/[^\w\s]/g, '').trim();
-      return !/^(hola|holaa|holaaa|buenas|buenos dias|buenos días|buenas tardes|buenas noches|hello|hi|hey|gracias|muchas gracias|ok|vale|listo)$/i.test(clean);
-    });
-
-    const mainQuery = substantiveQueries.length > 0 ? substantiveQueries[0] : (userMessages[0] || 'Consulta inicial');
-    const latestQuery = substantiveQueries.length > 1 ? substantiveQueries[substantiveQueries.length - 1] : null;
-
-    // Detect program
-    let detectedProgram = 'General / Todos los idiomas';
-    if (/ingl[eé]s|english/i.test(allUserText)) detectedProgram = 'Inglés (MCER A1 - C1)';
-    else if (/franc[eé]s|french/i.test(allUserText)) detectedProgram = 'Francés (DELF / DALF)';
-    else if (/portugu[eé]s|portuguese/i.test(allUserText)) detectedProgram = 'Portugués (Negocios / Fluidez)';
-
-    // Topic classification
-    let topicCategory = 'Validación Especial / Admisiones';
-    if (/descuento|beca|precio|costo|tarifa|promocion|financiaci[oó]n|cuota/i.test(allUserText)) {
-      topicCategory = '💰 Descuentos, Tarifas y Becas';
-    } else if (/doble cobro|reembolso|devoluci[oó]n|pago|tarjeta|transferencia/i.test(allUserText)) {
-      topicCategory = '💳 Pagos y Facturación';
-    } else if (/horario|modalidad|sabados|intensivo|online|presencial|noche|mañana/i.test(allUserText)) {
-      topicCategory = '📅 Horarios y Modalidades';
-    } else if (/parqueadero|cafeteria|sede|laboratorio|ubicaci[oó]n/i.test(allUserText)) {
-      topicCategory = '🏢 Instalaciones y Sede';
-    } else if (/intercambio|viaje|canada|suiza|alemania/i.test(allUserText)) {
-      topicCategory = '✈️ Convenios e Intercambios';
-    }
-
-    return {
-      studentName: studentName || 'Estudiante Interesado',
-      phone: phone || 'No registrado aún',
-      mainQuery,
-      latestQuery: (latestQuery && latestQuery !== mainQuery) ? latestQuery : null,
-      detectedProgram,
-      topicCategory,
-      initialTime: conv.created_at ? new Date(conv.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Reciente',
-      totalMessages: conv.messages ? conv.messages.length : 0
-    };
   };
 
-  // DOCUMENT UPLOAD STATE
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [uploadLoading, setUploadLoading] = useState(false);
-  const [uploadSuccess, setUploadSuccess] = useState('');
-  const [uploadError, setUploadError] = useState('');
+  lines.forEach((line, index) => {
+    const trimmed = line.trim();
+    if (!trimmed) {
+      flushList();
+      return;
+    }
 
-  // METRICS STATE
+    // 1. Check if line is a Section / Category Header (e.g. **Modalidades:** or - **Modalidades:** or Modalidades:)
+    const boldHeaderMatch = trimmed.match(/^[-*•]?\s*\*\*([^*:\n]+):?\*\*:?$/);
+    const mdHeaderMatch = trimmed.match(/^(?:###|##|#)\s+(.+)$/);
+    const isColonTitle = !boldHeaderMatch && !mdHeaderMatch && /^[A-ZÁÉÍÓÚÑ][a-zA-ZáéíóúÁÉÍÓÚñÑ\s()/-]{2,45}:$/.test(trimmed) && !trimmed.includes('http');
+
+    if (boldHeaderMatch || mdHeaderMatch || isColonTitle) {
+      flushList();
+      const headerTitle = boldHeaderMatch ? boldHeaderMatch[1] : mdHeaderMatch ? mdHeaderMatch[1] : trimmed.replace(/:$/, '');
+      elements.push(
+        <div key={`section-hdr-${index}`} className={`mt-2.5 mb-1 flex items-center gap-1.5 border-b pb-0.5 ${isAgent ? 'border-white/15 text-gold' : 'border-black/10 text-ink'}`}>
+          <span className={`size-1.5 rounded-sm shrink-0 ${isAgent ? 'bg-gold' : 'bg-brand'}`} />
+          <span className="text-[11px] font-bold uppercase tracking-wider">
+            {headerTitle}
+          </span>
+        </div>
+      );
+      return;
+    }
+
+    // 2. Check for blockquote (> **Nota:** or > **Importante:**)
+    if (trimmed.startsWith('>')) {
+      flushList();
+      const quoteText = trimmed.replace(/^>\s*/, '');
+      elements.push(
+        <div key={`quote-${index}`} className={`my-2 rounded-xl p-2.5 text-xs leading-relaxed ${isAgent ? 'bg-white/10 border-l-2 border-gold text-cream' : 'bg-gold/15 border-l-2 border-brand text-ink'}`}>
+          {renderInlineFormatting(quoteText)}
+        </div>
+      );
+      return;
+    }
+
+    // 3. Check for bullet lists (-, *, •, or numbered 1., 2.)
+    if (/^[-*•]\s+/.test(trimmed) || /^\d+\.\s+/.test(trimmed)) {
+      const content = trimmed.replace(/^[-*•]\s+/, '').replace(/^\d+\.\s+/, '');
+      currentList.push(content);
+      return;
+    } else {
+      flushList();
+    }
+
+    // Regular paragraph
+    elements.push(
+      <p key={`p-${index}`} className={`my-1 text-xs leading-relaxed ${isAgent ? 'text-cream/95' : 'text-ink/90'}`}>
+        {renderInlineFormatting(trimmed)}
+      </p>
+    );
+  });
+
+  flushList();
+
+  return <div className="space-y-1">{elements}</div>;
+}
+
+export default function AdminDashboard({ onLogout }) {
+  const [activeTab, setActiveTab] = useState('inbox'); // 'inbox' | 'documents' | 'metrics'
+  const [conversations, setConversations] = useState([]);
+  const [selectedConversation, setSelectedConversation] = useState(null);
+  const [selectedDetails, setSelectedDetails] = useState(null);
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'pendiente' | 'en_atencion' | 'resuelto'
+  const [searchTerm, setSearchTerm] = useState('');
+  const [messageInput, setMessageInput] = useState('');
   const [metrics, setMetrics] = useState(null);
-  const [loadingMetrics, setLoadingMetrics] = useState(false);
+  const [metricsLoading, setMetricsLoading] = useState(false);
+  
+  // Document CRUD State
+  const [documents, setDocuments] = useState([]);
+  const [docsLoading, setDocsLoading] = useState(false);
+  const [deletingDoc, setDeletingDoc] = useState(null);
+  const [uploadFile, setUploadFile] = useState(null);
+  const [uploadLoading, setUploadLoading] = useState(false);
+  const [uploadSuccess, setUploadSuccess] = useState(null);
+  const [uploadError, setUploadError] = useState(null);
 
-  // QUICK RESPONSE TEMPLATES
-  const quickTemplates = [
-    { title: '👋 Bienvenida', text: '¡Hola! Te saluda tu asesor académico de Academia Lumina. Con gusto te brindo toda la información para tu matrícula.' },
-    { title: '📅 Horarios', text: 'Nuestros programas inician el primer lunes de cada mes en modalidades Presencial (Sede Principal) y Virtual interactiva en vivo.' },
-    { title: '💰 Costos & Becas', text: 'Contamos con 15% de descuento por pronto pago e inscripción anticipada. Además ofrecemos facilidades de financiación en cuotas sin interés.' },
-    { title: '📜 Certificación', text: 'Nuestros cursos están alineados y certificados bajo el Marco Común Europeo (MCER) desde A1 hasta C1, válidos internacionalmente.' },
-    { title: '📲 WhatsApp', text: '¿Deseas que continuemos por WhatsApp para enviarte el formulario de inscripción y formalizar tu matrícula?' }
-  ];
+  // Custom Confirmation Modal & Toast State
+  const [confirmModal, setConfirmModal] = useState(null);
+  const [toast, setToast] = useState(null);
 
-  // WEBSOCKET FOR REAL-TIME AGENT CHANNEL
+  const showToast = (message, type = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => {
+      setToast((prev) => (prev?.message === message ? null : prev));
+    }, 4000);
+  };
+
+  // Audio Notifications State
+  const [audioEnabled, setAudioEnabled] = useState(true);
+  const audioContextRef = useRef(null);
+
+  // Profile & Connection State
+  const [profile, setProfile] = useState({
+    username: getAdminUsername(),
+    role: getAdminRole(),
+    fullName: getAdminFullName()
+  });
+  const [isConnected, setIsConnected] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState(null);
+
+  const messagesEndRef = useRef(null);
+  const wsRef = useRef(null);
+
+  // Play gentle alert chime for new pending escalations
+  const playAlertSound = () => {
+    if (!audioEnabled) return;
+    try {
+      if (!audioContextRef.current) {
+        audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      const ctx = audioContextRef.current;
+      if (ctx.state === 'suspended') {
+        ctx.resume();
+      }
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
+      osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.15); // A5
+      gain.gain.setValueAtTime(0.2, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.3);
+    } catch (e) {
+      console.warn('Audio alert error:', e);
+    }
+  };
+
+  // Fetch conversations
+  const loadConversations = async () => {
+    try {
+      setLoading(true);
+      const data = await getAllConversations(statusFilter === 'all' ? null : statusFilter);
+      setConversations(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error('Error loading conversations:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch metrics
+  const loadMetrics = async (showNotification = false) => {
+    try {
+      setMetricsLoading(true);
+      const data = await getMetrics();
+      setMetrics(data);
+      if (showNotification) {
+        showToast('Métricas actualizadas exitosamente.');
+      }
+    } catch (err) {
+      console.error('Error loading metrics:', err);
+      if (showNotification) {
+        showToast(err.message || 'Error al actualizar métricas', 'error');
+      }
+    } finally {
+      setMetricsLoading(false);
+    }
+  };
+
+  // Fetch documents for RAG base
+  const loadDocList = async () => {
+    try {
+      setDocsLoading(true);
+      const docs = await getDocuments();
+      setDocuments(Array.isArray(docs) ? docs : []);
+    } catch (err) {
+      console.error('Error loading documents:', err);
+    } finally {
+      setDocsLoading(false);
+    }
+  };
+
+  // Initial load
+  useEffect(() => {
+    loadConversations();
+    loadMetrics();
+    loadDocList();
+
+    getAdminProfile()
+      .then((p) => {
+        setProfile({
+          username: p.username,
+          role: p.role,
+          fullName: p.full_name || p.username
+        });
+      })
+      .catch(() => {
+        // use local cache
+      });
+  }, [statusFilter]);
+
+  // Load documents when tab switches to documents
+  useEffect(() => {
+    if (activeTab === 'documents') {
+      loadDocList();
+    }
+  }, [activeTab]);
+
+  // Load conversation details when selected
+  useEffect(() => {
+    if (selectedConversation?.id) {
+      getConversationDetail(selectedConversation.id)
+        .then((data) => setSelectedDetails(data))
+        .catch((err) => console.error('Error loading conversation details:', err));
+    } else {
+      setSelectedDetails(null);
+    }
+  }, [selectedConversation]);
+
+  // Auto scroll messages
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [selectedDetails?.messages]);
+
+  const selectedConversationRef = useRef(selectedConversation);
+  useEffect(() => {
+    selectedConversationRef.current = selectedConversation;
+  }, [selectedConversation]);
+
+  // WebSocket for real-time backoffice updates
   useEffect(() => {
     const token = getAdminToken();
     if (!token) return;
 
-    let socket;
-    try {
-      socket = new WebSocket(`${WS_BASE_URL}/ws/agent?token=${encodeURIComponent(token)}`);
+    let isMounted = true;
+    let reconnectTimeout = null;
 
-      socket.onmessage = (event) => {
+    const connectWs = () => {
+      const wsUrl = `${WS_BASE_URL}/agent?token=${encodeURIComponent(token)}`;
+      const ws = new WebSocket(wsUrl);
+      wsRef.current = ws;
+
+      ws.onopen = () => {
+        if (isMounted) setIsConnected(true);
+      };
+
+      ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
-          if (
-            data.type === 'new_escalation' || 
-            data.type === 'conversation_claimed' || 
-            data.type === 'conversation_resolved' ||
-            data.type === 'conversation_updated' ||
-            data.type === 'conversation_deleted'
-          ) {
+
+          if (data.type === 'new_conversation' || data.type === 'status_update' || data.type === 'conversation_claimed') {
             loadConversations();
-            if (selectedConvId && data.conversation_id === selectedConvId) {
-              loadConversationDetail(selectedConvId);
-            }
-          } else if (data.type === 'user_message') {
-            if (selectedConvId && data.conversation_id === selectedConvId) {
-              loadConversationDetail(selectedConvId);
-            } else {
-              loadConversations();
+            loadMetrics();
+            if (data.status === 'pendiente') {
+              playAlertSound();
             }
           }
+
+          if (data.type === 'new_message' || data.type === 'user_message' || data.type === 'agent_message') {
+            const currentSelected = selectedConversationRef.current;
+            if (currentSelected && (data.conversation_id === currentSelected.id || data.session_id === currentSelected.session_id)) {
+              getConversationDetail(currentSelected.id).then(setSelectedDetails);
+            }
+            loadConversations();
+          }
         } catch (err) {
-          console.error('[Agent WS parse error]:', err);
+          console.error('WS parse error:', err);
         }
       };
 
-      socket.onerror = (err) => {
-        console.warn('[Agent WS Error]:', err);
+      ws.onclose = () => {
+        if (isMounted) {
+          setIsConnected(false);
+          // Try reconnecting after 3 seconds
+          reconnectTimeout = setTimeout(() => {
+            if (isMounted) connectWs();
+          }, 3000);
+        }
       };
-    } catch (e) {
-      console.warn('[Agent WS Connection error]:', e);
-    }
+
+      ws.onerror = (err) => {
+        console.warn('WS error:', err);
+      };
+    };
+
+    connectWs();
 
     return () => {
-      if (socket && socket.readyState === WebSocket.OPEN) {
-        socket.close();
-      }
+      isMounted = false;
+      if (reconnectTimeout) clearTimeout(reconnectTimeout);
+      if (wsRef.current) wsRef.current.close();
     };
-  }, [selectedConvId]);
+  }, [audioEnabled]);
 
-  // Load conversations whenever tab or filter changes
-  useEffect(() => {
-    if (activeTab === 'inbox') {
-      loadConversations();
-    } else if (activeTab === 'metrics') {
-      loadMetrics();
-    }
-  }, [activeTab, filterStatus]);
-
-  const loadConversations = async () => {
-    setLoadingConversations(true);
+  const handleClaim = async (id) => {
     try {
-      let data;
-      if (filterStatus === 'pendiente') {
-        data = await getPendingConversations();
-      } else if (filterStatus === 'en_atencion') {
-        data = await getAllConversations('en_atencion');
-      } else if (filterStatus === 'resuelto') {
-        data = await getAllConversations('resuelto');
-      } else {
-        data = await getAllConversations();
+      await claimConversation(id);
+      await loadConversations();
+      const updated = await getConversationDetail(id);
+      setSelectedDetails(updated);
+      setSelectedConversation((prev) => (prev?.id === id ? { ...prev, estado: 'en_atencion' } : prev));
+    } catch (err) {
+      setErrorMsg(err.message || 'Error al reclamar caso');
+    }
+  };
+
+  const handleResolve = async (id) => {
+    try {
+      await resolveConversation(id);
+      await loadConversations();
+      const updated = await getConversationDetail(id);
+      setSelectedDetails(updated);
+      setSelectedConversation((prev) => (prev?.id === id ? { ...prev, estado: 'resuelto' } : prev));
+    } catch (err) {
+      setErrorMsg(err.message || 'Error al resolver caso');
+    }
+  };
+
+  const handleDelete = (id) => {
+    setConfirmModal({
+      title: '¿Eliminar conversación?',
+      message: 'Se eliminará el registro y todo el historial de mensajes de esta conversación. Esta acción no se puede deshacer.',
+      confirmText: 'Sí, eliminar',
+      onConfirm: async () => {
+        try {
+          await deleteConversation(id);
+          if (selectedConversation?.id === id) {
+            setSelectedConversation(null);
+            setSelectedDetails(null);
+          }
+          await loadConversations();
+          showToast('Conversación eliminada exitosamente.');
+        } catch (err) {
+          showToast(err.message || 'Error al eliminar conversación', 'error');
+        }
       }
-      setConversations(data || []);
-      // NOTE: No auto-select! The chat stays closed until the advisor explicitly clicks a conversation.
-    } catch (err) {
-      console.error('Error loading conversations:', err);
-    } finally {
-      setLoadingConversations(false);
+    });
+  };
+
+  const handleToggleSelect = (id, e) => {
+    e.stopPropagation();
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
+    );
+  };
+
+  const handleSelectAll = () => {
+    const visibleIds = filteredConversations.map((c) => c.id);
+    const allSelected = visibleIds.length > 0 && visibleIds.every((id) => selectedIds.includes(id));
+    if (allSelected) {
+      setSelectedIds((prev) => prev.filter((id) => !visibleIds.includes(id)));
+    } else {
+      setSelectedIds((prev) => Array.from(new Set([...prev, ...visibleIds])));
     }
   };
 
-  const loadConversationDetail = async (convId) => {
-    try {
-      const detail = await getConversationDetail(convId);
-      setActiveConversation(detail);
-      setTimeout(() => {
-        chatScrollRef.current?.scrollIntoView({ behavior: 'smooth' });
-      }, 100);
-    } catch (err) {
-      console.error('Error loading conversation detail:', err);
-    }
-  };
-
-  const handleSelectConversation = (id) => {
-    setSelectedConvId(id);
-    setShowFullTranscript(false);
-    setChatError('');
-    loadConversationDetail(id);
-  };
-
-  // CRUD: Claim (Update)
-  const handleClaim = async () => {
-    if (!selectedConvId) return;
-    setChatError('');
-    try {
-      const updated = await claimConversation(selectedConvId);
-      setActiveConversation(updated);
-      setFilterStatus('en_atencion');
-      loadConversations();
-    } catch (err) {
-      setChatError(err.message || 'Error al reclamar conversación');
-    }
-  };
-
-  // CRUD: Resolve (Update - Automatically moves case to 'Casos Resueltos')
-  const handleResolve = async () => {
-    if (!selectedConvId) return;
-    setChatError('');
-    try {
-      const updated = await resolveConversation(selectedConvId);
-      setActiveConversation(updated);
-      // Automatically switch view to 'Casos Resueltos' so advisor sees it archived
-      setFilterStatus('resuelto');
-    } catch (err) {
-      setChatError(err.message || 'Error al resolver conversación');
-    }
-  };
-
-  // CRUD: Clear / Purge all test conversations
-  const handleClearAll = async () => {
-    if (!window.confirm('¿Deseas limpiar todos los chats de prueba acumulados y dejar la bandeja en blanco?')) {
-      return;
-    }
-    try {
-      await clearAllConversations();
-      setSelectedConvId(null);
-      setActiveConversation(null);
-      loadConversations();
-    } catch (err) {
-      setChatError(err.message || 'Error al limpiar la base de datos');
-    }
-  };
-
-  // CRUD: Fast Status Update
-  const handleQuickStatusChange = async (newStatus) => {
-    if (!selectedConvId) return;
-    setChatError('');
-    try {
-      const updated = await updateConversation(selectedConvId, { estado: newStatus });
-      setActiveConversation(updated);
-      loadConversations();
-    } catch (err) {
-      setChatError(err.message || 'Error al actualizar estado');
-    }
-  };
-
-  // CRUD: Delete Conversation
-  const handleDelete = async (convId, e) => {
-    if (e) e.stopPropagation();
-    const idToDelete = convId || selectedConvId;
-    if (!idToDelete) return;
-
-    if (!window.confirm(`¿Estás seguro de eliminar permanentemente la conversación #${idToDelete}?`)) {
-      return;
-    }
-
-    try {
-      await deleteConversation(idToDelete);
-      if (selectedConvId === idToDelete) {
-        setSelectedConvId(null);
-        setActiveConversation(null);
+  const handleBulkDelete = () => {
+    if (selectedIds.length === 0) return;
+    const count = selectedIds.length;
+    setConfirmModal({
+      title: `¿Eliminar ${count} ${count === 1 ? 'conversación' : 'conversaciones'}?`,
+      message: `Se eliminarán permanentemente las ${count} conversaciones seleccionadas y todo su historial. Esta acción no se puede deshacer.`,
+      confirmText: `Sí, eliminar (${count})`,
+      onConfirm: async () => {
+        try {
+          await bulkDeleteConversations(selectedIds);
+          if (selectedConversation && selectedIds.includes(selectedConversation.id)) {
+            setSelectedConversation(null);
+            setSelectedDetails(null);
+          }
+          setSelectedIds([]);
+          await loadConversations();
+          showToast(`${count} ${count === 1 ? 'conversación eliminada' : 'conversaciones eliminadas'} exitosamente.`);
+        } catch (err) {
+          showToast(err.message || 'Error al eliminar conversaciones', 'error');
+        }
       }
-      loadConversations();
-    } catch (err) {
-      setChatError(err.message || 'Error al eliminar conversación');
-    }
+    });
   };
 
-  // CRUD: Create New Custom / Simulated Conversation
-  const handleCreateConversation = async (e) => {
+  const handleSendMessage = async (e) => {
     e.preventDefault();
-    const sId = newSessionId.trim() || `manual_${Date.now()}`;
+    if (!selectedConversation?.id || !messageInput.trim()) return;
+
+    const text = messageInput.trim();
+    setMessageInput('');
+
     try {
-      const newConv = await createConversation({
-        session_id: sId,
-        idioma: newLang,
-        estado: 'pendiente',
-        initial_message: newInitialMsg.trim() || 'Consulta inicial registrada por asesor.'
-      });
-      setShowNewModal(false);
-      setNewSessionId('');
-      setNewInitialMsg('');
-      loadConversations();
-      setSelectedConvId(newConv.id);
-      loadConversationDetail(newConv.id);
+      await sendAgentMessage(selectedConversation.id, text);
+      const updated = await getConversationDetail(selectedConversation.id);
+      setSelectedDetails(updated);
+      await loadConversations();
     } catch (err) {
-      setChatError(err.message || 'Error al crear conversación');
+      showToast(err.message || 'Error enviando mensaje', 'error');
     }
   };
 
-  // Agent Send Message
-  const handleSendAgentMessage = async (e) => {
+  const handleUploadDocument = async (e) => {
     e.preventDefault();
-    if (!agentInput.trim() || !selectedConvId || sendingMessage) return;
-
-    if (activeConversation?.estado === 'pendiente') {
-      setChatError(language === 'es' ? 'Debes tomar el caso antes de poder responder al estudiante.' : 'You must claim the case before sending a message.');
-      return;
-    }
-
-    const text = agentInput.trim();
-    setAgentInput('');
-    setSendingMessage(true);
-    setChatError('');
-    try {
-      await sendAgentMessage(selectedConvId, text);
-      await loadConversationDetail(selectedConvId);
-    } catch (err) {
-      setChatError(err.message || 'Error al enviar mensaje');
-    } finally {
-      setSendingMessage(false);
-    }
-  };
-
-  // DOCUMENT UPLOAD HANDLERS
-  const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      if (!file.name.endsWith('.md')) {
-        setUploadError(language === 'es' ? 'Solo se permiten archivos .md' : 'Only .md files allowed');
-        setSelectedFile(null);
-        return;
-      }
-      setSelectedFile(file);
-      setUploadError('');
-      setUploadSuccess('');
-    }
-  };
-
-  const handleUploadSubmit = async (e) => {
-    e.preventDefault();
-    if (!selectedFile) return;
+    if (!uploadFile) return;
 
     setUploadLoading(true);
-    setUploadError('');
-    setUploadSuccess('');
+    setUploadSuccess(null);
+    setUploadError(null);
 
     try {
-      const result = await uploadMarkdownDocument(selectedFile);
-      setUploadSuccess(result.message || 'Documento reindexado con éxito.');
-      setSelectedFile(null);
+      const res = await uploadDocument(uploadFile);
+      setUploadSuccess(`Documento "${uploadFile.name}" procesado e indexado exitosamente en ChromaDB (${res.total_chunks || 'RAG'} fragmentos totales).`);
+      setUploadFile(null);
+      await loadDocList();
+      showToast(`Documento "${uploadFile.name}" indexado exitosamente.`);
     } catch (err) {
-      setUploadError(err.message || 'Error al procesar el archivo');
+      setUploadError(err.message || 'Error al indexar documento');
+      showToast(err.message || 'Error al indexar documento', 'error');
     } finally {
       setUploadLoading(false);
     }
   };
 
-  // METRICS HANDLERS
-  const loadMetrics = async () => {
-    setLoadingMetrics(true);
-    try {
-      const data = await getMetrics();
-      setMetrics(data);
-    } catch (err) {
-      console.error('Error fetching metrics:', err);
-    } finally {
-      setLoadingMetrics(false);
-    }
+  const handleDeleteDoc = (filename) => {
+    setConfirmModal({
+      title: '¿Eliminar documento de la Base RAG?',
+      message: `Se eliminará permanentemente el archivo "${filename}" y se purgarán todos sus fragmentos de búsqueda vectorial en ChromaDB.`,
+      confirmText: 'Sí, eliminar documento',
+      onConfirm: async () => {
+        try {
+          setDeletingDoc(filename);
+          setUploadSuccess(null);
+          setUploadError(null);
+          const res = await deleteDocument(filename);
+          setUploadSuccess(res.message || `Documento "${filename}" eliminado correctamente.`);
+          await loadDocList();
+          showToast(`Documento "${filename}" eliminado de ChromaDB.`);
+        } catch (err) {
+          setUploadError(err.message || 'Error al eliminar documento');
+          showToast(err.message || 'Error al eliminar documento', 'error');
+        } finally {
+          setDeletingDoc(null);
+        }
+      }
+    });
   };
 
-  const handleLogoutClick = () => {
-    removeAdminToken();
-    onLogout();
-  };
-
-  // Filter conversations by search query
-  const filteredConversations = conversations.filter(c => {
-    if (!searchQuery.trim()) return true;
-    const q = searchQuery.toLowerCase();
+  const filteredConversations = conversations.filter((c) => {
+    if (!searchTerm.trim()) return true;
+    const term = searchTerm.toLowerCase();
     return (
-      c.session_id.toLowerCase().includes(q) ||
-      (c.last_message && c.last_message.toLowerCase().includes(q)) ||
-      c.id.toString().includes(q)
+      c.session_id?.toLowerCase().includes(term) ||
+      c.idioma?.toLowerCase().includes(term) ||
+      c.estado?.toLowerCase().includes(term) ||
+      (c.messages && c.messages.some((m) => m.contenido?.toLowerCase().includes(term)))
     );
   });
 
   return (
-    <div className="admin-dashboard-container fade-in">
-      {/* Top Advisor Navigation Header */}
-      <header className="admin-header glass-panel">
-        <div className="admin-header-brand">
-          <Sparkles className="gold-text" size={26} />
-          <div className="admin-brand-texts">
-            <h1 className="admin-brand-title">
-              {language === 'es' ? 'Panel de Asesores — Academia Lumina' : 'Advisor Portal — Academia Lumina'}
-            </h1>
-            <span className="admin-logged-badge">
-              <UserCheck size={14} />
-              <span>{language === 'es' ? 'Asesor Conectado:' : 'Active Advisor:'} <strong>{advisorName}</strong></span>
-            </span>
+    <div className="relative min-h-screen w-full bg-cream font-sans text-ink antialiased selection:bg-brand/30">
+      {/* Warm gradient background */}
+      <div className="pointer-events-none fixed inset-0 -z-10">
+        <div
+          className="absolute inset-0"
+          style={{
+            background:
+              "linear-gradient(135deg, #FFF6EC 0%, #FCE3D2 38%, #F7D2CB 66%, #EAD7E8 100%)",
+          }}
+        />
+        <div className="absolute -top-40 -right-28 h-[560px] w-[560px] rounded-full bg-gold/40 blur-3xl" />
+        <div className="absolute -bottom-52 -left-40 h-[520px] w-[520px] rounded-full bg-accent-rose/25 blur-3xl" />
+      </div>
+
+      {/* Top Navbar */}
+      <header className="border-b border-black/5 bg-white/40 backdrop-blur-md sticky top-0 z-30">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
+          <div className="flex items-center gap-6">
+            <div className="flex items-center gap-3">
+              <div className="grid size-9 place-items-center rounded-2xl bg-white/70 ring-1 ring-black/5 text-brand font-bold font-display">
+                L
+              </div>
+              <div>
+                <span className="text-sm font-semibold tracking-tight font-display text-ink block">
+                  Academia Lumina
+                </span>
+                <span className="text-[11px] text-ink/60 font-medium">Portal del Asesor</span>
+              </div>
+            </div>
+
+            {/* Navigation Tabs */}
+            <nav className="hidden md:flex items-center gap-1.5 bg-white/40 p-1 rounded-2xl ring-1 ring-black/5">
+              <button
+                onClick={() => setActiveTab('inbox')}
+                className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-medium transition ${
+                  activeTab === 'inbox'
+                    ? 'bg-ink text-cream shadow-xs'
+                    : 'text-ink/70 hover:text-ink hover:bg-white/50'
+                }`}
+              >
+                <Inbox size={14} />
+                <span>Bandeja de Chats</span>
+                {conversations.filter((c) => c.estado === 'pendiente').length > 0 && (
+                  <span className="rounded-full bg-amber-400 px-1.5 py-0.2 text-[10px] font-bold text-ink">
+                    {conversations.filter((c) => c.estado === 'pendiente').length}
+                  </span>
+                )}
+              </button>
+              <button
+                onClick={() => setActiveTab('documents')}
+                className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-medium transition ${
+                  activeTab === 'documents'
+                    ? 'bg-ink text-cream shadow-xs'
+                    : 'text-ink/70 hover:text-ink hover:bg-white/50'
+                }`}
+              >
+                <FileText size={14} />
+                <span>Base RAG</span>
+              </button>
+              <button
+                onClick={() => {
+                  setActiveTab('metrics');
+                  loadMetrics();
+                }}
+                className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-medium transition ${
+                  activeTab === 'metrics'
+                    ? 'bg-ink text-cream shadow-xs'
+                    : 'text-ink/70 hover:text-ink hover:bg-white/50'
+                }`}
+              >
+                <BarChart3 size={14} />
+                <span>Métricas y SLA</span>
+              </button>
+            </nav>
           </div>
-        </div>
 
-        {/* Tab Switcher */}
-        <nav className="admin-tabs-nav">
-          <button
-            className={`admin-tab-btn ${activeTab === 'inbox' ? 'active' : ''}`}
-            onClick={() => setActiveTab('inbox')}
-          >
-            <Headphones size={18} />
-            <span>{language === 'es' ? 'Bandeja de Asesores' : 'Advisor Inbox'}</span>
-            {conversations.filter(c => c.estado === 'pendiente').length > 0 && (
-              <span className="tab-counter-badge">
-                {conversations.filter(c => c.estado === 'pendiente').length}
-              </span>
-            )}
-          </button>
+          <div className="flex items-center gap-3">
+            {/* Live Connection & Audio toggle */}
+            <div className="hidden sm:flex items-center gap-2 rounded-full bg-white/50 px-3 py-1 text-[11px] ring-1 ring-black/5">
+              <span className={`size-2 rounded-full ${isConnected ? 'bg-emerald-400' : 'bg-rose-400 animate-pulse'}`} />
+              <span className="text-ink/70">{isConnected ? 'En vivo' : 'Reconectando'}</span>
+            </div>
 
-          <button
-            className={`admin-tab-btn ${activeTab === 'documents' ? 'active' : ''}`}
-            onClick={() => setActiveTab('documents')}
-          >
-            <FileUp size={18} />
-            <span>{language === 'es' ? 'Base de Conocimiento RAG' : 'RAG Knowledge Base'}</span>
-          </button>
+            <button
+              onClick={() => setAudioEnabled(!audioEnabled)}
+              className="grid size-9 place-items-center rounded-2xl bg-white/50 ring-1 ring-black/5 text-ink/70 transition hover:bg-white/80"
+              title={audioEnabled ? 'Alertas sonoras activas' : 'Alertas silenciadas'}
+            >
+              {audioEnabled ? <Volume2 size={16} /> : <VolumeX size={16} className="text-ink/40" />}
+            </button>
 
-          <button
-            className={`admin-tab-btn ${activeTab === 'metrics' ? 'active' : ''}`}
-            onClick={() => setActiveTab('metrics')}
-          >
-            <BarChart3 size={18} />
-            <span>{language === 'es' ? 'Métricas & SLA' : 'Metrics & SLA'}</span>
-          </button>
-        </nav>
-
-        {/* Controls: Language, Theme, Public Site & Logout */}
-        <div className="admin-header-actions">
-          <button 
-            className="admin-icon-btn" 
-            onClick={toggleLanguage}
-            title={language === 'en' ? 'Cambiar a Español' : 'Switch to English'}
-          >
-            <Globe size={18} />
-            <span className="btn-label-text">{language.toUpperCase()}</span>
-          </button>
-
-          <button 
-            className="admin-icon-btn" 
-            onClick={toggleTheme}
-            title="Toggle theme"
-          >
-            {theme === 'dark' ? <Sun size={18} className="theme-icon-sun" /> : <Moon size={18} />}
-          </button>
-
-          <button 
-            className="admin-secondary-btn" 
-            onClick={onBackToSite}
-            title="Ir al sitio público"
-          >
-            <ArrowLeft size={16} />
-            <span>{language === 'es' ? 'Sitio Web' : 'Public Site'}</span>
-          </button>
-
-          <button 
-            className="admin-logout-btn" 
-            onClick={handleLogoutClick}
-            title="Cerrar sesión"
-          >
-            <LogOut size={16} />
-            <span>{language === 'es' ? 'Salir' : 'Logout'}</span>
-          </button>
+            <div className="flex items-center gap-2.5 border-l border-black/5 pl-3">
+              <div className="grid size-8 place-items-center rounded-full bg-gold/50 text-xs font-bold text-ink font-display">
+                {profile.fullName.charAt(0).toUpperCase()}
+              </div>
+              <div className="hidden lg:block text-left text-xs">
+                <div className="font-semibold text-ink leading-tight">{profile.fullName}</div>
+                <div className="text-[10px] text-ink/60 uppercase tracking-wider">{profile.role}</div>
+              </div>
+              <button
+                onClick={onLogout}
+                className="grid size-8 place-items-center rounded-2xl text-ink/60 transition hover:bg-rose/40 hover:text-ink"
+                title="Cerrar sesión"
+              >
+                <LogOut size={16} />
+              </button>
+            </div>
+          </div>
         </div>
       </header>
 
-      {/* Main Backoffice Workspace */}
-      <main className="admin-main-view">
-        {/* ================================================================== */}
-        {/* TAB 1: BANDEJA DE ASESORES & CHAT EN VIVO CON CRUD COMPLETO */}
-        {/* ================================================================== */}
+      {/* Main Content Area */}
+      <main className="mx-auto max-w-7xl px-6 py-6">
+        {/* INBOX TAB */}
         {activeTab === 'inbox' && (
-          <div className="admin-inbox-layout slide-up">
-            {/* Left Column: Conversation Directory & CRUD Actions */}
-            <div className="inbox-sidebar glass-panel">
-              <div className="inbox-sidebar-top-bar">
-                <div className="inbox-filter-tabs">
-                  <button
-                    className={`filter-btn ${filterStatus === 'pendiente' ? 'active' : ''}`}
-                    onClick={() => setFilterStatus('pendiente')}
-                  >
-                    {language === 'es' ? '⚠️ Pendientes' : '⚠️ Pending'}
-                  </button>
-                  <button
-                    className={`filter-btn ${filterStatus === 'en_atencion' ? 'active' : ''}`}
-                    onClick={() => setFilterStatus('en_atencion')}
-                  >
-                    {language === 'es' ? '🎧 En Atención' : '🎧 In Progress'}
-                  </button>
-                  <button
-                    className={`filter-btn ${filterStatus === 'resuelto' ? 'active' : ''}`}
-                    onClick={() => setFilterStatus('resuelto')}
-                  >
-                    {language === 'es' ? '✅ Casos Resueltos' : '✅ Resolved'}
-                  </button>
-                </div>
-
-                <div className="inbox-actions-row">
-                  <button 
-                    className="btn-create-chat" 
-                    onClick={() => setShowNewModal(true)}
-                    title="Crear Nueva Consulta / Ticket"
-                  >
-                    <Plus size={14} />
-                    <span>{language === 'es' ? 'Nuevo Chat' : 'New Chat'}</span>
-                  </button>
-
-                  <div className="inbox-secondary-actions">
-                    <button 
-                      className="btn-clear-inbox" 
-                      onClick={handleClearAll}
-                      title="Limpiar chats de prueba acumulados"
-                    >
-                      <Trash2 size={13} />
-                      <span>{language === 'es' ? 'Limpiar' : 'Clear'}</span>
-                    </button>
-                    <button 
-                      className="refresh-mini-btn" 
-                      onClick={loadConversations} 
-                      title="Refrescar lista"
-                    >
-                      <RefreshCw size={14} className={loadingConversations ? 'spin' : ''} />
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Search Bar */}
-              <div className="inbox-search-box">
-                <Search size={15} className="search-icon" />
-                <input
-                  type="text"
-                  placeholder={language === 'es' ? 'Buscar por ID o mensaje...' : 'Search by ID or message...'}
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="inbox-search-input"
-                />
-                {searchQuery && (
-                  <button className="clear-search-btn" onClick={() => setSearchQuery('')}>✕</button>
-                )}
-              </div>
-
-              <div className="inbox-list">
-                {loadingConversations && conversations.length === 0 ? (
-                  <div className="inbox-empty-state">
-                    <p>{language === 'es' ? 'Cargando conversaciones...' : 'Loading conversations...'}</p>
-                  </div>
-                ) : filteredConversations.length === 0 ? (
-                  <div className="inbox-empty-state">
-                    <CheckCheck size={36} className="gold-text" />
-                    <p>{language === 'es' ? 'No hay conversaciones en este apartado.' : 'No conversations in this section.'}</p>
-                  </div>
-                ) : (
-                  filteredConversations.map((c) => (
-                    <div
-                      key={c.id}
-                      className={`inbox-item ${selectedConvId === c.id ? 'selected' : ''} status-${c.estado}`}
-                      onClick={() => handleSelectConversation(c.id)}
-                    >
-                      <div className="inbox-item-top">
-                        <span className={`status-badge badge-${c.estado}`}>
-                          {c.estado === 'pendiente' ? '⚠️ PENDIENTE' : c.estado === 'en_atencion' ? '🎧 EN ATENCIÓN' : c.estado === 'resuelto' ? '✅ RESUELTO' : '🤖 BOT'}
-                        </span>
-                        <div className="inbox-item-meta-right">
-                          <span className="inbox-time">
-                            <Clock size={12} />
-                            {new Date(c.updated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </span>
-                          <button
-                            className="btn-item-delete"
-                            onClick={(e) => handleDelete(c.id, e)}
-                            title="Eliminar conversación"
-                          >
-                            <Trash2 size={13} />
-                          </button>
-                        </div>
-                      </div>
-                      <div className="inbox-item-session">
-                        <strong>ID:</strong> <code>{c.session_id.length > 20 ? c.session_id.substring(0, 20) + '...' : c.session_id}</code>
-                      </div>
-                      {c.last_message && (
-                        <p className="inbox-last-msg">
-                          "{c.last_message.length > 65 ? c.last_message.substring(0, 65) + '...' : c.last_message}"
-                        </p>
-                      )}
-                      {c.agente_asignado && (
-                        <div className="inbox-assigned">
-                          <UserCheck size={12} />
-                          <span>Asesor: <strong>{c.agente_asignado}</strong></span>
-                        </div>
-                      )}
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-
-            {/* Right Column: Active Live Chat with Full History & Fast Actions */}
-            <div className="inbox-chat-panel glass-panel">
-              {activeConversation ? (
-                <>
-                  {/* Chat Top Action Bar */}
-                  <div className="inbox-chat-header">
-                    <div className="chat-header-info">
-                      <div className="chat-title-row">
-                        <MessageSquare size={20} className="gold-text" />
-                        <h3>{language === 'es' ? 'Consulta' : 'Conversation'} #{activeConversation.id}</h3>
-                        <span className={`status-badge badge-${activeConversation.estado}`}>
-                          {activeConversation.estado.toUpperCase()}
-                        </span>
-                        <span className="lang-pill">{activeConversation.idioma.toUpperCase()}</span>
-                      </div>
-                      <span className="session-id-subtitle">
-                        Session ID: <code>{activeConversation.session_id}</code>
-                        {activeConversation.agente_asignado && (
-                          <> • Asesor a cargo: <strong>{activeConversation.agente_asignado}</strong></>
+          <div className="grid grid-cols-12 gap-6 h-[calc(100vh-140px)] min-h-[550px]">
+            {/* Left Column: Conversation Queue */}
+            <div className="col-span-12 md:col-span-4 lg:col-span-4 flex flex-col rounded-3xl bg-white/50 ring-1 ring-black/5 backdrop-blur-md overflow-hidden shadow-sm">
+              {/* Filter pills & search */}
+              <div className="p-4 border-b border-black/5 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold text-ink/60 uppercase tracking-wider">
+                      Conversaciones ({filteredConversations.length})
+                    </span>
+                    {filteredConversations.length > 0 && (
+                      <button
+                        onClick={handleSelectAll}
+                        className="flex items-center gap-1 rounded-lg px-2 py-0.5 text-[11px] font-medium text-ink/70 hover:bg-black/5 hover:text-ink transition"
+                        title={
+                          filteredConversations.length > 0 && filteredConversations.every((c) => selectedIds.includes(c.id))
+                            ? 'Deseleccionar todas'
+                            : 'Seleccionar todas'
+                        }
+                      >
+                        {filteredConversations.length > 0 && filteredConversations.every((c) => selectedIds.includes(c.id)) ? (
+                          <CheckSquare size={13} className="text-brand" />
+                        ) : selectedIds.length > 0 && filteredConversations.some((c) => selectedIds.includes(c.id)) ? (
+                          <MinusSquare size={13} className="text-brand" />
+                        ) : (
+                          <Square size={13} className="text-ink/40" />
                         )}
+                        <span>
+                          {filteredConversations.length > 0 && filteredConversations.every((c) => selectedIds.includes(c.id))
+                            ? 'Deseleccionar'
+                            : 'Todas'}
+                        </span>
+                      </button>
+                    )}
+                  </div>
+                  <button
+                    onClick={loadConversations}
+                    className="grid size-7 place-items-center rounded-xl text-ink/60 hover:bg-white/80"
+                    title="Refrescar lista"
+                  >
+                    <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+                  </button>
+                </div>
+
+                <div className="relative">
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink/40" />
+                  <input
+                    type="text"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    placeholder="Buscar estudiante o mensaje..."
+                    className="w-full rounded-2xl bg-white/80 pl-9 pr-3 py-2 text-xs text-ink outline-none ring-1 ring-black/10 focus:ring-2 focus:ring-ink"
+                  />
+                </div>
+
+                <div className="flex flex-wrap gap-1.5">
+                  {[
+                    { id: 'all', label: 'Todas' },
+                    { id: 'pendiente', label: 'Pendientes' },
+                    { id: 'en_atencion', label: 'En curso' },
+                    { id: 'resuelto', label: 'Resueltas' }
+                  ].map((filter) => (
+                    <button
+                      key={filter.id}
+                      onClick={() => setStatusFilter(filter.id)}
+                      className={`rounded-full px-3 py-1 text-[11px] font-medium transition ${
+                        statusFilter === filter.id
+                          ? 'bg-ink text-cream'
+                          : 'bg-white/60 text-ink/70 hover:bg-white'
+                      }`}
+                    >
+                      {filter.label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Bulk Action Bar when items are selected */}
+                {selectedIds.length > 0 && (
+                  <div className="flex items-center justify-between gap-2 rounded-2xl bg-ink p-2.5 text-cream shadow-md animate-rise">
+                    <div className="flex items-center gap-2 pl-1.5">
+                      <span className="grid size-5 place-items-center rounded-full bg-gold text-[10px] font-bold text-ink">
+                        {selectedIds.length}
+                      </span>
+                      <span className="text-xs font-medium">
+                        {selectedIds.length === 1 ? '1 seleccionada' : `${selectedIds.length} seleccionadas`}
                       </span>
                     </div>
-
-                    <div className="chat-header-actions">
-                      {/* Quick status dropdown / actions */}
-                      {activeConversation.estado === 'pendiente' && (
-                        <button
-                          className="btn-claim-chat pulse-glow"
-                          onClick={handleClaim}
-                          title="Tomar este caso para responder en tiempo real"
-                        >
-                          <Headphones size={16} />
-                          <span>{language === 'es' ? 'Tomar Caso' : 'Claim Case'}</span>
-                        </button>
-                      )}
-
-                      {activeConversation.estado === 'en_atencion' && (
-                        <button
-                          className="btn-resolve-chat pulse-glow"
-                          onClick={handleResolve}
-                          title="Finalizar atención y mover a Casos Resueltos"
-                        >
-                          <CheckCircle size={16} />
-                          <span>{language === 'es' ? '✅ Caso Resuelto' : '✅ Case Resolved'}</span>
-                        </button>
-                      )}
-
+                    <div className="flex items-center gap-1.5">
                       <button
-                        className="btn-chat-delete"
-                        onClick={() => handleDelete(activeConversation.id)}
-                        title="Eliminar permanentemente este chat"
+                        onClick={() => setSelectedIds([])}
+                        className="rounded-xl px-2.5 py-1 text-[11px] text-cream/70 hover:bg-white/10 hover:text-cream transition"
                       >
-                        <Trash2 size={16} />
-                        <span>{language === 'es' ? 'Eliminar' : 'Delete'}</span>
+                        Cancelar
+                      </button>
+                      <button
+                        onClick={handleBulkDelete}
+                        className="inline-flex items-center gap-1.5 rounded-xl bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-rose-500 transition cursor-pointer"
+                      >
+                        <Trash2 size={13} />
+                        <span>Eliminar ({selectedIds.length})</span>
                       </button>
                     </div>
                   </div>
+                )}
+              </div>
 
-                  {/* Messages Feed: Single Executive Summary Card + Real-time Live Advisor Chat */}
-                  <div className="inbox-messages-feed">
-                    {(() => {
-                      const summary = extractConversationSummary(activeConversation);
-                      
-                      // Identify live conversation turns (messages by agent or messages after agent joined)
-                      const firstAgentIdx = activeConversation.messages 
-                        ? activeConversation.messages.findIndex(m => m.remitente === 'agent') 
-                        : -1;
-                      
-                      const liveMessages = firstAgentIdx !== -1 
-                        ? activeConversation.messages.slice(firstAgentIdx) 
-                        : [];
+              {/* Conversation List */}
+              <div className="flex-1 overflow-y-auto p-3 space-y-2">
+                {filteredConversations.length === 0 ? (
+                  <div className="py-12 text-center text-xs text-ink/50">
+                    No hay conversaciones en esta categoría.
+                  </div>
+                ) : (
+                  filteredConversations.map((conv) => {
+                    const isSelected = selectedConversation?.id === conv.id;
+                    const isChecked = selectedIds.includes(conv.id);
+                    const lastMsg = conv.messages && conv.messages.length > 0 ? conv.messages[conv.messages.length - 1] : null;
 
-                      return (
-                        <>
-                          {/* 1. SINGLE SUMMARY MESSAGE CARD */}
-                          <div className="advisor-summary-card">
-                            <div className="summary-card-header">
-                              <div className="summary-title-wrapper">
-                                <Sparkles size={18} className="gold-text" />
-                                <h4>{language === 'es' ? 'Resumen Ejecutivo del Caso' : 'Case Executive Summary'}</h4>
-                              </div>
-                              <span className="summary-badge">{summary.topicCategory}</span>
-                            </div>
+                    return (
+                      <div
+                        key={conv.id}
+                        onClick={() => setSelectedConversation(conv)}
+                        className={`group cursor-pointer rounded-2xl p-3.5 transition duration-200 ring-1 flex items-start gap-3 ${
+                          isChecked
+                            ? 'bg-brand/[0.06] ring-2 ring-brand/80 shadow-xs'
+                            : isSelected
+                              ? 'bg-white shadow-md ring-brand'
+                              : 'bg-white/40 ring-black/5 hover:bg-white/80'
+                        }`}
+                      >
+                        {/* Custom Checkbox */}
+                        <div
+                          onClick={(e) => handleToggleSelect(conv.id, e)}
+                          className={`mt-0.5 grid size-5 shrink-0 place-items-center rounded-lg border transition cursor-pointer ${
+                            isChecked
+                              ? 'border-brand bg-brand text-cream shadow-2xs'
+                              : 'border-black/20 bg-white/90 hover:border-brand/70 group-hover:border-black/40'
+                          }`}
+                          title={isChecked ? 'Deseleccionar' : 'Seleccionar'}
+                        >
+                          {isChecked && <Check size={12} className="stroke-[3]" />}
+                        </div>
 
-                            <div className="summary-grid">
-                              <div className="summary-field">
-                                <span className="summary-label">👤 {language === 'es' ? 'Estudiante / Contacto:' : 'Student / Contact:'}</span>
-                                <span className="summary-value">
-                                  <strong>{summary.studentName}</strong> {summary.phone !== 'No registrado aún' && ` • WhatsApp: ${summary.phone}`}
-                                </span>
-                              </div>
-
-                              <div className="summary-field">
-                                <span className="summary-label">📚 {language === 'es' ? 'Programa de Interés:' : 'Program of Interest:'}</span>
-                                <span className="summary-value">{summary.detectedProgram}</span>
-                              </div>
-
-                              <div className="summary-field full-width">
-                                <span className="summary-label">❓ {language === 'es' ? 'Consulta que originó el escalamiento:' : 'Escalation Query:'}</span>
-                                <p className="summary-quote">"{summary.mainQuery}"</p>
-                              </div>
-
-                              {summary.latestQuery && (
-                                <div className="summary-field full-width">
-                                  <span className="summary-label">💬 {language === 'es' ? 'Último mensaje recibido:' : 'Latest Student Message:'}</span>
-                                  <p className="summary-quote">"{summary.latestQuery}"</p>
-                                </div>
-                              )}
-                            </div>
-
-                            <div className="summary-card-footer">
-                              <span className="summary-timestamp">
-                                <Clock size={13} /> {language === 'es' ? `Escalado a las ${summary.initialTime}` : `Escalated at ${summary.initialTime}`}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between mb-1">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className="text-xs font-bold text-ink truncate max-w-[120px]">
+                                {conv.session_id}
                               </span>
-                              <button 
-                                type="button"
-                                className="btn-toggle-transcript"
-                                onClick={() => setShowFullTranscript(!showFullTranscript)}
-                              >
-                                {showFullTranscript 
-                                  ? (language === 'es' ? '▲ Ocultar historial detallado' : '▲ Hide full transcript')
-                                  : (language === 'es' ? `▼ Ver historial detallado (${activeConversation.messages ? activeConversation.messages.length : 0} mensajes)` : `▼ View full transcript (${activeConversation.messages ? activeConversation.messages.length : 0} messages)`)}
-                              </button>
+                              <span className="rounded-full bg-black/5 px-2 py-0.5 text-[10px] uppercase font-semibold text-ink/60 shrink-0">
+                                {conv.idioma || 'es'}
+                              </span>
                             </div>
 
-                            {/* Collapsible raw transcript */}
-                            {showFullTranscript && (
-                              <div className="full-transcript-box slide-up">
-                                {activeConversation.messages && activeConversation.messages.map((m) => (
-                                  <div
-                                    key={m.id}
-                                    className={`admin-msg-row msg-${m.remitente}`}
-                                  >
-                                    <div className="admin-msg-bubble">
-                                      <div className="admin-msg-meta">
-                                        <span className="sender-tag">
-                                          {m.remitente === 'user' ? '👤 Estudiante' : m.remitente === 'agent' ? '🎧 Asesor' : '🤖 Bot IA'}
-                                        </span>
-                                        <span className="time-tag">
-                                          {new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                        </span>
-                                      </div>
-                                      <div className="admin-msg-text">
-                                        {m.contenido}
-                                      </div>
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
+                            <span
+                              className={`rounded-full px-2 py-0.5 text-[10px] font-semibold shrink-0 ${
+                                conv.estado === 'pendiente'
+                                  ? 'bg-amber-100 text-amber-900 animate-pulse'
+                                  : conv.estado === 'en_atencion'
+                                    ? 'bg-gold/40 text-ink font-bold'
+                                    : conv.estado === 'resuelto'
+                                      ? 'bg-emerald-100 text-emerald-900'
+                                      : 'bg-stone-100 text-stone-700'
+                              }`}
+                            >
+                              {conv.estado === 'pendiente' && 'Pendiente'}
+                              {conv.estado === 'en_atencion' && 'En atención'}
+                              {conv.estado === 'resuelto' && 'Resuelto'}
+                              {conv.estado === 'bot' && 'Bot IA'}
+                            </span>
                           </div>
 
-                          {/* 2. REAL-TIME LIVE AGENT CHAT FEED */}
-                          {liveMessages.length > 0 ? (
-                            <>
-                              <div className="history-divider">
-                                <span>{language === 'es' ? '🎧 Conversación en Vivo con Asesor' : '🎧 Live Advisor Chat'}</span>
-                              </div>
-                              {liveMessages.map((m) => (
-                                <div
-                                  key={m.id}
-                                  className={`admin-msg-row msg-${m.remitente}`}
-                                >
-                                  <div className="admin-msg-bubble">
-                                    <div className="admin-msg-meta">
-                                      <span className="sender-tag">
-                                        {m.remitente === 'user' ? '👤 Estudiante' : m.remitente === 'agent' ? '🎧 Asesor' : '🤖 Bot IA'}
-                                      </span>
-                                      <span className="time-tag">
-                                        {new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                      </span>
-                                    </div>
-                                    <div className="admin-msg-text">
-                                      {m.contenido}
-                                    </div>
-                                  </div>
-                                </div>
-                              ))}
-                            </>
-                          ) : (
-                            <div className="live-chat-banner">
-                              <Headphones size={18} />
-                              <span>{language === 'es' ? 'Caso listo para atención en tiempo real. Escribe abajo para responder directamente al estudiante.' : 'Case ready for live support. Reply below to text the student in real time.'}</span>
-                            </div>
+                          {lastMsg && (
+                            <p className="text-xs text-ink/70 line-clamp-2 leading-relaxed">
+                              {lastMsg.contenido}
+                            </p>
                           )}
-                        </>
-                      );
-                    })()}
-                    <div ref={chatScrollRef} />
-                  </div>
 
-                  {/* Chat Error Banner if present */}
-                  {chatError && (
-                    <div className="chat-error-banner fade-in">
-                      <div className="flex items-center gap-2">
-                        <AlertCircle size={16} />
-                        <span>{chatError}</span>
-                      </div>
-                      <button onClick={() => setChatError('')} title="Cerrar">✕</button>
-                    </div>
-                  )}
-
-                  {/* Dynamic Bottom Action / Reply Area based on Case Status */}
-                  {activeConversation.estado === 'pendiente' ? (
-                    <div className="unclaimed-guard-bar">
-                      <div className="unclaimed-guard-info">
-                        <AlertCircle size={22} className="warning-icon" />
-                        <div className="unclaimed-guard-texts">
-                          <strong>{language === 'es' ? 'Caso pendiente de atención' : 'Case is pending assignment'}</strong>
-                          <span>{language === 'es' ? 'Debes tomar este caso antes de poder responder en vivo al estudiante.' : 'You must claim this case before replying to the student.'}</span>
+                          <div className="mt-2 flex items-center justify-between text-[10px] text-ink/50">
+                            <span>
+                              {new Date(conv.updated_at || conv.created_at).toLocaleTimeString([], {
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </span>
+                            <span>{conv.messages?.length || 0} msgs</span>
+                          </div>
                         </div>
                       </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+
+            {/* Right Column: Active Chat Detail */}
+            <div className="col-span-12 md:col-span-8 lg:col-span-8 flex flex-col rounded-3xl bg-white/50 ring-1 ring-black/5 backdrop-blur-md overflow-hidden shadow-sm">
+              {selectedConversation ? (
+                <>
+                  {/* Chat Header */}
+                  <div className="flex flex-wrap items-center justify-between border-b border-black/5 bg-white/60 p-4 gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="grid size-10 place-items-center rounded-2xl bg-gold/40 font-display font-bold text-ink">
+                        {selectedConversation.session_id.slice(-2).toUpperCase()}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-bold text-ink">{selectedConversation.session_id}</span>
+                          <span className="rounded-full bg-cream px-2 py-0.5 text-[10px] font-semibold text-ink/70 ring-1 ring-black/5">
+                            Idioma: {selectedConversation.idioma || 'es'}
+                          </span>
+                        </div>
+                        <div className="text-xs text-ink/60">
+                          Estado: <span className="font-semibold text-ink">{selectedDetails?.estado || selectedConversation.estado}</span>
+                          {selectedDetails?.agente_asignado && ` · Atendido por ${selectedDetails.agente_asignado}`}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      {selectedDetails?.estado === 'pendiente' && (
+                        <button
+                          onClick={() => handleClaim(selectedConversation.id)}
+                          className="rounded-xl bg-ink px-4 py-2 text-xs font-semibold text-cream shadow-sm hover:bg-ink/90"
+                        >
+                          Tomar caso
+                        </button>
+                      )}
+
+                      {selectedDetails?.estado === 'en_atencion' && (
+                        <button
+                          onClick={() => handleResolve(selectedConversation.id)}
+                          className="flex items-center gap-1.5 rounded-xl bg-emerald-700 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-emerald-800"
+                        >
+                          <Check size={14} />
+                          <span>Marcar resuelto</span>
+                        </button>
+                      )}
+
                       <button
-                        type="button"
-                        className="btn-claim-chat pulse-glow"
-                        onClick={handleClaim}
-                        title="Tomar este caso para responder en tiempo real"
+                        onClick={() => handleDelete(selectedConversation.id)}
+                        className="grid size-8 place-items-center rounded-xl text-ink/40 hover:bg-rose/50 hover:text-ink"
+                        title="Eliminar registro"
                       >
-                        <Headphones size={16} />
-                        <span>{language === 'es' ? '🎧 Tomar Caso Ahora' : '🎧 Claim Case Now'}</span>
+                        <Trash2 size={15} />
                       </button>
                     </div>
-                  ) : activeConversation.estado === 'resuelto' ? (
-                    <div className="resolved-guard-bar">
-                      <CheckCircle size={20} className="success-icon" />
-                      <span>{language === 'es' ? '✅ Este caso ha sido marcado como Resuelto (Solo lectura).' : '✅ This case has been marked as Resolved (Read-only).'}</span>
-                    </div>
-                  ) : (
-                    <>
-                      {/* Quick Response Templates Chips */}
-                      <div className="quick-templates-bar">
-                        <span className="templates-label">⚡ {language === 'es' ? 'Plantillas Rápidas:' : 'Quick Replies:'}</span>
-                        <div className="templates-scroll">
-                          {quickTemplates.map((t, idx) => (
-                            <button
-                              key={idx}
-                              type="button"
-                              className="template-chip"
-                              onClick={() => setAgentInput(t.text)}
-                              title={t.text}
-                            >
-                              {t.title}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
+                  </div>
 
-                      {/* Agent Reply Box */}
-                      <form onSubmit={handleSendAgentMessage} className="inbox-reply-form">
-                        <input
-                          type="text"
-                          className="inbox-reply-input"
-                          placeholder={language === 'es' ? 'Escribe una respuesta al estudiante en tiempo real (Presiona Enter)...' : 'Type a real-time message to the student (Press Enter)...'}
-                          value={agentInput}
-                          onChange={(e) => setAgentInput(e.target.value)}
-                          disabled={sendingMessage}
-                        />
-                        <button
-                          type="submit"
-                          className="inbox-send-btn pulse-glow"
-                          disabled={!agentInput.trim() || sendingMessage}
-                          title="Enviar mensaje en vivo"
-                        >
-                          <Send size={18} />
-                        </button>
-                      </form>
-                    </>
-                  )}
+                  {/* Messages Scroll Area */}
+                  <div className="flex-1 space-y-3.5 overflow-y-auto p-5 bg-cream/30">
+                    {selectedDetails?.messages && selectedDetails.messages.length > 0 ? (
+                      selectedDetails.messages.map((msg, i) => {
+                        const isUser = msg.remitente === 'user';
+                        const isAgent = msg.remitente === 'agent';
+                        const isBot = !isUser && !isAgent;
+
+                        return (
+                          <div
+                            key={i}
+                            className={`flex ${isUser ? 'justify-start' : 'justify-end'}`}
+                          >
+                            <div
+                              className={`max-w-[85%] rounded-2xl p-3.5 text-xs leading-relaxed shadow-xs ${
+                                isUser
+                                  ? 'bg-white text-ink ring-1 ring-black/10 rounded-tl-xs'
+                                  : isAgent
+                                    ? 'bg-ink text-cream font-normal rounded-tr-xs ring-1 ring-black/20'
+                                    : 'bg-amber-500/10 text-ink rounded-tr-xs ring-1 ring-amber-500/20'
+                              }`}
+                            >
+                              <div className={`mb-1.5 text-[10.5px] font-semibold flex items-center justify-between gap-4 pb-1 border-b ${
+                                isAgent ? 'border-white/10 text-gold' : isUser ? 'border-black/5 text-ink/60' : 'border-amber-500/15 text-brand'
+                              }`}>
+                                <span className="flex items-center gap-1.5">
+                                  {isUser ? '👤 Estudiante' : isAgent ? `🧑‍💼 Asesor (${msg.agente || 'Tú'})` : '🤖 Asistente IA'}
+                                </span>
+                                <span className="opacity-70">
+                                  {new Date(msg.timestamp).toLocaleTimeString([], {
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                  })}
+                                </span>
+                              </div>
+                              <FormattedAdvisorMessage text={msg.contenido} isAgent={isAgent} />
+                            </div>
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <div className="py-20 text-center text-xs text-ink/40">
+                        Cargando historial de mensajes...
+                      </div>
+                    )}
+                    <div ref={messagesEndRef} />
+                  </div>
+
+                  {/* Quick Canned Replies */}
+                  <div className="flex flex-wrap gap-1.5 border-t border-black/5 bg-white/40 px-4 py-2">
+                    {[
+                      '¡Hola! Soy tu asesor Lumina, ¿en qué puedo ayudarte hoy?',
+                      'Te comparto que las admisiones para este ciclo cierran este viernes.',
+                      'He registrado tu matrícula exitosamente. ¡Bienvenido!'
+                    ].map((canned, i) => (
+                      <button
+                        key={i}
+                        onClick={() => setMessageInput(canned)}
+                        className="truncate max-w-[260px] rounded-full bg-white/80 px-3 py-1 text-[11px] text-ink/75 ring-1 ring-black/5 hover:bg-white"
+                      >
+                        {canned}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Message Input Bar */}
+                  <form onSubmit={handleSendMessage} className="border-t border-black/5 bg-white/80 p-3 flex gap-2">
+                    <input
+                      type="text"
+                      value={messageInput}
+                      onChange={(e) => setMessageInput(e.target.value)}
+                      placeholder="Escribe tu respuesta al estudiante..."
+                      className="flex-1 rounded-2xl bg-white px-4 py-2.5 text-xs text-ink outline-none ring-1 ring-black/10 focus:ring-2 focus:ring-ink"
+                    />
+                    <button
+                      type="submit"
+                      disabled={!messageInput.trim()}
+                      className="grid size-10 place-items-center rounded-2xl bg-ink text-cream shadow-xs transition hover:bg-ink/90 disabled:opacity-40"
+                    >
+                      <Send size={15} />
+                    </button>
+                  </form>
                 </>
               ) : (
-                <div className="inbox-no-selected">
-                  <MessageSquare size={54} className="gold-text" />
-                  <h3>{language === 'es' ? 'Selecciona una conversación' : 'Select a conversation'}</h3>
-                  <p>{language === 'es' ? 'Podrás consultar el historial completo, tomar el caso y responder al estudiante en vivo.' : 'You can review history, claim the case, and reply in real time.'}</p>
+                <div className="flex flex-1 flex-col items-center justify-center p-8 text-center text-ink/50">
+                  <div className="grid size-14 place-items-center rounded-3xl bg-white/60 ring-1 ring-black/5 mb-4 shadow-xs">
+                    <MessageSquare size={24} className="text-brand" />
+                  </div>
+                  <h3 className="text-base font-semibold text-ink">Selecciona una conversación</h3>
+                  <p className="mt-1 max-w-xs text-xs text-ink/60">
+                    Escoge un chat de la lista izquierda para revisar el historial y responder al estudiante.
+                  </p>
                 </div>
               )}
             </div>
           </div>
         )}
 
-        {/* ================================================================== */}
-        {/* TAB 2: SUBIDA DE DOCUMENTOS Y REINDEXACIÓN RAG */}
-        {/* ================================================================== */}
+        {/* DOCUMENTS TAB */}
         {activeTab === 'documents' && (
-          <div className="admin-docs-view slide-up">
-            <div className="admin-card-container glass-panel">
-              <div className="admin-card-header">
-                <UploadCloud size={36} className="gold-text" />
-                <h2>{language === 'es' ? 'Carga y Reindexación de Base de Conocimiento' : 'Knowledge Base Upload & Re-indexing'}</h2>
-                <p>
-                  {language === 'es'
-                    ? 'Sube archivos en formato Markdown (.md) para actualizar automáticamente la base vectorial en ChromaDB.'
-                    : 'Upload Markdown (.md) documents to automatically update and re-index ChromaDB embeddings.'}
+          <div className="space-y-6 animate-rise">
+            {/* Header / Intro */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <span className="text-xs uppercase tracking-[0.2em] text-brand font-semibold">Knowledge Base RAG</span>
+                <h2 className="mt-1 text-2xl font-light font-display text-ink">Gestión de Documentos y Base de Conocimiento</h2>
+                <p className="mt-1 text-xs text-ink/70 max-w-2xl">
+                  Sube y gestiona archivos PDF, Word (.docx) o texto plano. Cada documento se procesa automáticamente y se indexa vectorialmente en ChromaDB para alimentar las respuestas del asistente de IA.
                 </p>
               </div>
-
-              {uploadSuccess && (
-                <div className="admin-alert-success fade-in">
-                  <CheckCircle size={20} />
-                  <span>{uploadSuccess}</span>
-                </div>
-              )}
-
-              {uploadError && (
-                <div className="admin-error-alert fade-in">
-                  <AlertCircle size={20} />
-                  <span>{uploadError}</span>
-                </div>
-              )}
-
-              <form onSubmit={handleUploadSubmit} className="doc-upload-form">
-                <div className="doc-dropzone">
-                  <input
-                    type="file"
-                    id="docFileInput"
-                    accept=".md"
-                    onChange={handleFileChange}
-                    className="file-input-hidden"
-                  />
-                  <label htmlFor="docFileInput" className="dropzone-label">
-                    <FileText size={48} className="gold-text" />
-                    <span className="dropzone-title">
-                      {selectedFile ? selectedFile.name : (language === 'es' ? 'Haz clic o arrastra un archivo .md' : 'Click or drop a .md file')}
-                    </span>
-                    <span className="dropzone-subtitle">
-                      {selectedFile 
-                        ? `${(selectedFile.size / 1024).toFixed(1)} KB` 
-                        : (language === 'es' ? 'Archivos de texto Markdown únicamente' : 'Markdown text files only')}
-                    </span>
-                  </label>
-                </div>
-
-                <button
-                  type="submit"
-                  className="btn-upload-submit pulse-glow"
-                  disabled={!selectedFile || uploadLoading}
-                >
-                  {uploadLoading ? (
-                    <span>{language === 'es' ? 'Procesando y Reindexando ChromaDB...' : 'Processing and Re-indexing ChromaDB...'}</span>
-                  ) : (
-                    <>
-                      <Zap size={18} />
-                      <span>{language === 'es' ? 'Subir y Reindexar ChromaDB' : 'Upload & Re-index ChromaDB'}</span>
-                    </>
-                  )}
-                </button>
-              </form>
-            </div>
-          </div>
-        )}
-
-        {/* ================================================================== */}
-        {/* TAB 3: MÉTRICAS Y MONITOREO EN VIVO */}
-        {/* ================================================================== */}
-        {activeTab === 'metrics' && (
-          <div className="admin-metrics-view slide-up">
-            <div className="metrics-header-row">
-              <div className="metrics-title-block">
-                <h2>{language === 'es' ? 'Panel de Métricas, Analítica & SLA' : 'Analytics, Performance & SLA Dashboard'}</h2>
-                <p>{language === 'es' ? 'Monitoreo operacional en tiempo real de consultas RAG, costos LPU y atención de asesores.' : 'Real-time operational analytics for RAG queries, LPU costs, and human advisor support.'}</p>
-              </div>
-              <button 
-                className="admin-secondary-btn" 
-                onClick={loadMetrics}
-                title="Actualizar métricas"
+              <button
+                onClick={loadDocList}
+                disabled={docsLoading}
+                className="self-start sm:self-auto flex items-center gap-1.5 rounded-2xl bg-white/60 px-4 py-2 text-xs font-semibold text-ink ring-1 ring-black/5 hover:bg-white transition"
               >
-                <RefreshCw size={15} className={loadingMetrics ? 'spin' : ''} />
-                <span>{language === 'es' ? 'Actualizar Datos' : 'Refresh Metrics'}</span>
+                <RefreshCw size={13} className={docsLoading ? 'animate-spin' : ''} />
+                <span>Actualizar Lista</span>
               </button>
             </div>
 
-            {loadingMetrics && !metrics ? (
-              <div className="inbox-empty-state">
-                <p>{language === 'es' ? 'Calculando analítica...' : 'Calculating analytics...'}</p>
-              </div>
-            ) : metrics ? (
-              <>
-                {/* 1. TOP 4 KEY PERFORMANCE INDICATORS */}
-                <div className="metrics-cards-grid">
-                  <div className="metric-card glass-panel">
-                    <div className="metric-header">
-                      <span>{language === 'es' ? 'Total Consultas' : 'Total Queries'}</span>
-                      <Activity size={20} className="gold-text" />
-                    </div>
-                    <div className="metric-value">{metrics.total_queries}</div>
-                    <div className="metric-footer">{language === 'es' ? 'Interacciones en la plataforma' : 'Platform interactions'}</div>
-                  </div>
-
-                  <div className="metric-card glass-panel">
-                    <div className="metric-header">
-                      <span>{language === 'es' ? 'Resolución IA Autónoma' : 'AI Resolution Rate'}</span>
-                      <Sparkles size={20} className="gold-text" />
-                    </div>
-                    <div className="metric-value">{metrics.ai_resolution_rate_pct ?? (100 - (metrics.escalation_rate_pct || 0)).toFixed(1)}%</div>
-                    <div className="metric-footer">{metrics.resolved_by_ai || (metrics.total_queries - (metrics.escalated_queries || 0))} {language === 'es' ? 'resueltas sin asesor' : 'resolved by bot'}</div>
-                  </div>
-
-                  <div className="metric-card glass-panel">
-                    <div className="metric-header">
-                      <span>{language === 'es' ? 'Tasa de Escalamiento' : 'Escalation Rate'}</span>
-                      <Headphones size={20} className="gold-text" />
-                    </div>
-                    <div className="metric-value">{metrics.escalation_rate_pct ?? 0}%</div>
-                    <div className="metric-footer">{metrics.escalated_queries || 0} {language === 'es' ? 'casos transferidos' : 'advisor handoffs'}</div>
-                  </div>
-
-                  <div className="metric-card glass-panel">
-                    <div className="metric-header">
-                      <span>{language === 'es' ? 'Eficiencia Caché TTL' : 'Cache Efficiency'}</span>
-                      <Zap size={20} className="gold-text" />
-                    </div>
-                    <div className="metric-value">{metrics.cache_hit_rate_pct ?? 0}%</div>
-                    <div className="metric-footer">{metrics.cached_queries || 0} {language === 'es' ? 'respuestas instantáneas' : 'cache hits'}</div>
-                  </div>
-                </div>
-
-                {/* 2. DEEP DIVE ANALYTICS SUBGRID */}
-                <div className="metrics-subgrid">
-                  {/* Panel A: Rendimiento RAG & Eficiencia de Costos */}
-                  <div className="metrics-panel glass-panel">
-                    <div className="metrics-panel-header">
-                      <h3>
-                        <Zap size={18} className="gold-text" />
-                        <span>{language === 'es' ? 'Rendimiento RAG & Costos de Inferencia' : 'RAG Performance & Inference Costs'}</span>
-                      </h3>
-                      <span className="summary-badge">Groq LPU Tier</span>
-                    </div>
-
-                    <div className="stats-list">
-                      <div className="stats-row">
-                        <span className="stats-label"><Clock size={15} /> {language === 'es' ? 'Latencia Promedio RAG:' : 'Average RAG Latency:'}</span>
-                        <span className="stats-val highlight">{metrics.avg_rag_latency_seconds || 0.85}s</span>
-                      </div>
-                      <div className="stats-row">
-                        <span className="stats-label"><CheckCircle size={15} /> {language === 'es' ? 'Cumplimiento de SLA (< 2.5s):' : 'SLA Compliance (< 2.5s):'}</span>
-                        <span className="stats-val">{metrics.sla_compliance_pct || 99.2}%</span>
-                      </div>
-                      <div className="stats-row">
-                        <span className="stats-label"><Sparkles size={15} /> {language === 'es' ? 'Satisfacción Estimada (CSAT):' : 'Estimated CSAT Rating:'}</span>
-                        <span className="stats-val">{metrics.csat_satisfaction_pct || 97.2}%</span>
-                      </div>
-                      <div className="stats-row">
-                        <span className="stats-label"><Activity size={15} /> {language === 'es' ? 'Tokens Reales Consumidos:' : 'Real Tokens Consumed:'}</span>
-                        <span className="stats-val">{(metrics.total_tokens || 0).toLocaleString()} tokens</span>
-                      </div>
-                      <div className="stats-row">
-                        <span className="stats-label"><DollarSign size={15} /> {language === 'es' ? 'Costo Operativo Estimado:' : 'Estimated Operating Cost:'}</span>
-                        <span className="stats-val highlight">{metrics.estimated_cost_usd || '$0.0000 USD'}</span>
-                      </div>
-                      <div className="stats-row">
-                        <span className="stats-label"><Zap size={15} /> {language === 'es' ? 'Ahorro por Caché Semántica:' : 'Tokens Saved by Cache:'}</span>
-                        <span className="stats-val">{(metrics.tokens_saved_by_cache || 0).toLocaleString()} tokens ({metrics.cost_saved_usd || '$0.0000'})</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Panel B: Ciclo de Vida de Casos & Base de Datos */}
-                  <div className="metrics-panel glass-panel">
-                    <div className="metrics-panel-header">
-                      <h3>
-                        <Headphones size={18} className="gold-text" />
-                        <span>{language === 'es' ? 'Bandeja de Asesores & Base de Datos' : 'Advisor Backoffice & Case Lifecycle'}</span>
-                      </h3>
-                      <span className="summary-badge">SQLite DB</span>
-                    </div>
-
-                    <div className="stats-list">
-                      <div className="stats-row">
-                        <span className="stats-label"><AlertCircle size={15} /> {language === 'es' ? 'Casos Pendientes de Asignación:' : 'Pending Unclaimed Cases:'}</span>
-                        <span className="stats-val highlight">{metrics.db_stats?.pending_conversations ?? conversations.filter(c => c.estado === 'pendiente').length}</span>
-                      </div>
-                      <div className="stats-row">
-                        <span className="stats-label"><Headphones size={15} /> {language === 'es' ? 'Casos en Atención Activa:' : 'In-Progress Active Cases:'}</span>
-                        <span className="stats-val">{metrics.db_stats?.in_progress_conversations ?? conversations.filter(c => c.estado === 'en_atencion').length}</span>
-                      </div>
-                      <div className="stats-row">
-                        <span className="stats-label"><CheckCircle size={15} /> {language === 'es' ? 'Casos Resueltos Exitosamente:' : 'Resolved Cases:'}</span>
-                        <span className="stats-val">{metrics.db_stats?.resolved_conversations ?? conversations.filter(c => c.estado === 'resuelto').length}</span>
-                      </div>
-                      <div className="stats-row">
-                        <span className="stats-label"><MessageSquare size={15} /> {language === 'es' ? 'Total Mensajes Guardados:' : 'Total Messages in DB:'}</span>
-                        <span className="stats-val">{(metrics.db_stats?.total_messages ?? 0).toLocaleString()}</span>
-                      </div>
-                      <div className="stats-row">
-                        <span className="stats-label"><Activity size={15} /> {language === 'es' ? 'Total Conversaciones Creadas:' : 'Total Conversations Created:'}</span>
-                        <span className="stats-val">{(metrics.db_stats?.total_conversations ?? conversations.length)}</span>
-                      </div>
-                    </div>
-
-                    {/* Distribución por Idioma */}
-                    <div className="lang-dist-container">
-                      <span className="stats-label">🌐 {language === 'es' ? 'Distribución por Idioma:' : 'Language Distribution:'}</span>
-                      {(() => {
-                        const langs = metrics.db_stats?.languages || { es: 1, en: 0, fr: 0, pt: 0 };
-                        const totalLangs = Math.max(1, (langs.es || 0) + (langs.en || 0) + (langs.fr || 0) + (langs.pt || 0));
-                        
-                        return (
-                          <>
-                            <div className="lang-dist-item">
-                              <div className="lang-dist-header">
-                                <span>🇪🇸 Español</span>
-                                <span>{langs.es || 0} ({Math.round(((langs.es || 0) / totalLangs) * 100)}%)</span>
-                              </div>
-                              <div className="lang-dist-bar-track">
-                                <div className="lang-dist-bar-fill fill-es" style={{ width: `${Math.round(((langs.es || 0) / totalLangs) * 100)}%` }} />
-                              </div>
-                            </div>
-
-                            <div className="lang-dist-item">
-                              <div className="lang-dist-header">
-                                <span>🇬🇧 English</span>
-                                <span>{langs.en || 0} ({Math.round(((langs.en || 0) / totalLangs) * 100)}%)</span>
-                              </div>
-                              <div className="lang-dist-bar-track">
-                                <div className="lang-dist-bar-fill fill-en" style={{ width: `${Math.round(((langs.en || 0) / totalLangs) * 100)}%` }} />
-                              </div>
-                            </div>
-
-                            <div className="lang-dist-item">
-                              <div className="lang-dist-header">
-                                <span>🇫🇷 Français</span>
-                                <span>{langs.fr || 0} ({Math.round(((langs.fr || 0) / totalLangs) * 100)}%)</span>
-                              </div>
-                              <div className="lang-dist-bar-track">
-                                <div className="lang-dist-bar-fill fill-fr" style={{ width: `${Math.round(((langs.fr || 0) / totalLangs) * 100)}%` }} />
-                              </div>
-                            </div>
-
-                            <div className="lang-dist-item">
-                              <div className="lang-dist-header">
-                                <span>🇧🇷 Português</span>
-                                <span>{langs.pt || 0} ({Math.round(((langs.pt || 0) / totalLangs) * 100)}%)</span>
-                              </div>
-                              <div className="lang-dist-bar-track">
-                                <div className="lang-dist-bar-fill fill-pt" style={{ width: `${Math.round(((langs.pt || 0) / totalLangs) * 100)}%` }} />
-                              </div>
-                            </div>
-                          </>
-                        );
-                      })()}
-                    </div>
-                  </div>
-                </div>
-              </>
-            ) : (
-              <div className="inbox-empty-state">
-                <p>{language === 'es' ? 'No hay datos de métricas disponibles.' : 'No metrics data available.'}</p>
+            {/* Notifications */}
+            {uploadSuccess && (
+              <div className="rounded-2xl bg-emerald-100 p-3.5 text-xs text-emerald-900 ring-1 ring-emerald-200 flex items-center justify-between">
+                <span>{uploadSuccess}</span>
+                <button onClick={() => setUploadSuccess(null)} className="text-emerald-700 hover:text-emerald-900 text-xs font-bold ml-2">✕</button>
               </div>
             )}
+            {uploadError && (
+              <div className="rounded-2xl bg-rose/60 p-3.5 text-xs text-ink ring-1 ring-rose/80 flex items-center justify-between">
+                <span>{uploadError}</span>
+                <button onClick={() => setUploadError(null)} className="text-rose-700 hover:text-rose-900 text-xs font-bold ml-2">✕</button>
+              </div>
+            )}
+
+            <div className="grid grid-cols-12 gap-8">
+              {/* Upload Card */}
+              <div className="col-span-12 lg:col-span-5">
+                <div className="rounded-3xl bg-white/50 p-6 ring-1 ring-black/5 backdrop-blur-md shadow-sm h-full flex flex-col justify-between">
+                  <div>
+                    <h3 className="text-base font-semibold text-ink mb-1">Subir Nuevo Documento</h3>
+                    <p className="text-xs text-ink/70 mb-4">
+                      Formatos compatibles: <strong>PDF</strong>, <strong>Word (.docx)</strong>, TXT y MD.
+                    </p>
+
+                    <form onSubmit={handleUploadDocument} className="space-y-4">
+                      <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-black/15 bg-white/40 p-6 text-center transition hover:bg-white/70">
+                        <Upload size={32} className="text-brand mb-2" />
+                        <label className="cursor-pointer text-xs font-semibold text-ink">
+                          <span className="rounded-xl bg-ink/5 px-3 py-1.5 text-ink hover:bg-ink/10">Seleccionar PDF / Word / TXT</span>
+                          <input
+                            type="file"
+                            accept=".pdf,.docx,.doc,.txt,.md"
+                            onChange={(e) => setUploadFile(e.target.files[0] || null)}
+                            className="hidden"
+                          />
+                        </label>
+                        {uploadFile ? (
+                          <div className="mt-3 flex flex-col items-center gap-1">
+                            <span className="text-xs font-bold text-emerald-900 bg-emerald-100 px-3 py-1 rounded-full">
+                              {uploadFile.name}
+                            </span>
+                            <span className="text-[10.5px] text-ink/60">
+                              ({(uploadFile.size / 1024).toFixed(1)} KB)
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="mt-2 text-[11px] text-ink/50">o arrastra el archivo aquí</span>
+                        )}
+                      </div>
+
+                      <div className="flex items-center justify-center gap-2 pt-1 text-[11px] text-ink/60">
+                        <span className="rounded bg-rose/60 px-1.5 py-0.5 font-bold text-rose-900">PDF</span>
+                        <span className="rounded bg-sky-100 px-1.5 py-0.5 font-bold text-sky-900">DOCX</span>
+                        <span className="rounded bg-black/5 px-1.5 py-0.5 font-medium text-ink/70">TXT / MD</span>
+                      </div>
+
+                      <button
+                        type="submit"
+                        disabled={!uploadFile || uploadLoading}
+                        className="flex w-full items-center justify-center gap-2 rounded-2xl bg-ink py-3 text-xs font-semibold text-cream shadow-sm hover:bg-ink/90 disabled:opacity-50 transition"
+                      >
+                        {uploadLoading && <Loader2 size={14} className="animate-spin" />}
+                        <span>{uploadLoading ? 'Extrayendo texto e indexando en ChromaDB...' : 'Subir e Indexar a Base RAG'}</span>
+                      </button>
+                    </form>
+                  </div>
+
+                  <div className="mt-6 rounded-2xl bg-white/40 p-3.5 ring-1 ring-black/5 text-[11.5px] text-ink/75 leading-relaxed">
+                    💡 <strong>Tip para documentos Word y PDF:</strong> Asegúrate de que las secciones principales contengan tablas de aranceles, fechas y programas claramente estructurados.
+                  </div>
+                </div>
+              </div>
+
+              {/* Documents List & CRUD */}
+              <div className="col-span-12 lg:col-span-7">
+                <div className="rounded-3xl bg-white/50 p-6 ring-1 ring-black/5 backdrop-blur-md shadow-sm">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-base font-semibold text-ink">Documentos en la Base RAG</h3>
+                      <span className="rounded-full bg-brand/10 px-2.5 py-0.5 text-xs font-bold text-brand">
+                        {documents.length} archivos
+                      </span>
+                    </div>
+                  </div>
+
+                  {docsLoading ? (
+                    <div className="flex flex-col items-center justify-center py-12 text-ink/50">
+                      <Loader2 size={24} className="animate-spin text-brand mb-2" />
+                      <span className="text-xs">Cargando base de conocimiento...</span>
+                    </div>
+                  ) : documents.length === 0 ? (
+                    <div className="rounded-2xl border border-dashed border-black/15 p-8 text-center text-ink/60 text-xs">
+                      No hay documentos cargados en la base de datos RAG. Sube un archivo PDF o Word para empezar.
+                    </div>
+                  ) : (
+                    <div className="space-y-3 max-h-[520px] overflow-y-auto pr-1">
+                      {documents.map((doc) => {
+                        const isDeleting = deletingDoc === doc.filename;
+                        const ext = doc.extension?.toLowerCase() || '';
+                        const isPdf = ext === 'pdf';
+                        const isDocx = ext === 'docx' || ext === 'doc';
+
+                        return (
+                          <div
+                            key={doc.filename}
+                            className="flex items-center justify-between gap-3 rounded-2xl bg-white/80 p-4 ring-1 ring-black/5 hover:bg-white transition shadow-xs"
+                          >
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div
+                                className={`grid size-10 shrink-0 place-items-center rounded-2xl text-[10px] font-bold ring-1 ${
+                                  isPdf
+                                    ? 'bg-rose/70 text-rose-950 ring-rose/50'
+                                    : isDocx
+                                    ? 'bg-sky-100 text-sky-950 ring-sky-200'
+                                    : 'bg-black/5 text-ink ring-black/10'
+                                }`}
+                              >
+                                {isPdf ? 'PDF' : isDocx ? 'DOCX' : 'TXT'}
+                              </div>
+                              <div className="min-w-0">
+                                <div className="text-xs font-semibold text-ink truncate">
+                                  {doc.filename}
+                                </div>
+                                <div className="text-[11px] text-ink/60 flex items-center gap-2 mt-0.5">
+                                  <span>{doc.size_formatted}</span>
+                                  <span>•</span>
+                                  <span>{new Date(doc.updated_at).toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            <button
+                              onClick={() => handleDeleteDoc(doc.filename)}
+                              disabled={isDeleting}
+                              title="Eliminar documento e indexación"
+                              className="grid size-9 shrink-0 place-items-center rounded-xl bg-white/60 text-rose-700 hover:bg-rose-100 hover:text-rose-900 ring-1 ring-black/5 transition disabled:opacity-50"
+                            >
+                              {isDeleting ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={15} />}
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* METRICS TAB */}
+        {activeTab === 'metrics' && (
+          <div className="space-y-6 animate-rise">
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="text-xs uppercase tracking-[0.2em] text-ink/50 font-semibold">Dashboard Ejecutivo</span>
+                <h2 className="mt-1 text-2xl font-light font-display text-ink">Métricas del Sistema y SLA</h2>
+              </div>
+              <button
+                onClick={() => loadMetrics(true)}
+                disabled={metricsLoading}
+                className="flex items-center gap-1.5 rounded-2xl bg-white/60 px-4 py-2 text-xs font-semibold text-ink ring-1 ring-black/5 hover:bg-white disabled:opacity-60 transition cursor-pointer"
+              >
+                <RefreshCw size={13} className={metricsLoading ? 'animate-spin text-brand' : ''} />
+                <span>{metricsLoading ? 'Actualizando...' : 'Actualizar'}</span>
+              </button>
+            </div>
+
+            {/* Metrics Cards Grid */}
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="rounded-3xl bg-white/50 p-6 ring-1 ring-black/5 backdrop-blur-md shadow-xs">
+                <span className="text-xs text-ink/60 font-medium">Resolución por IA</span>
+                <div className="mt-2 text-3xl font-light font-display text-ink">
+                  {metrics?.ai_resolution_rate_pct ?? '100'}%
+                </div>
+                <div className="mt-1 text-[11px] text-emerald-800 font-medium">Atención inmediata sin esperas</div>
+              </div>
+
+              <div className="rounded-3xl bg-white/50 p-6 ring-1 ring-black/5 backdrop-blur-md shadow-xs">
+                <span className="text-xs text-ink/60 font-medium">Cumplimiento SLA</span>
+                <div className="mt-2 text-3xl font-light font-display text-gold">
+                  {metrics?.sla_compliance_pct ?? '100'}%
+                </div>
+                <div className="mt-1 text-[11px] text-ink/60">Tiempo de respuesta &lt; 10 min</div>
+              </div>
+
+              <div className="rounded-3xl bg-white/50 p-6 ring-1 ring-black/5 backdrop-blur-md shadow-xs">
+                <span className="text-xs text-ink/60 font-medium">Ahorro Estimado LPU</span>
+                <div className="mt-2 text-3xl font-light font-display text-brand">
+                  {metrics?.cost_saved_usd ?? '$0.00 USD'}
+                </div>
+                <div className="mt-1 text-[11px] text-ink/60">Optimización de caché de tokens</div>
+              </div>
+
+              <div className="rounded-3xl bg-white/50 p-6 ring-1 ring-black/5 backdrop-blur-md shadow-xs">
+                <span className="text-xs text-ink/60 font-medium">Total Conversaciones</span>
+                <div className="mt-2 text-3xl font-light font-display text-ink">
+                  {metrics?.db_stats?.total_conversations ?? conversations.length}
+                </div>
+                <div className="mt-1 text-[11px] text-ink/60">
+                  {metrics?.db_stats?.pending_conversations ?? 0} pendientes de atención
+                </div>
+              </div>
+            </div>
+
+            {/* Language Distribution & DB Stats */}
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+              <div className="rounded-3xl bg-white/40 p-6 ring-1 ring-black/5 backdrop-blur-sm">
+                <h3 className="text-sm font-semibold text-ink mb-4">Distribución por Idioma</h3>
+                <div className="space-y-3">
+                  {[
+                    { lang: 'Español (es)', count: metrics?.db_stats?.languages?.es ?? 0, color: 'bg-brand' },
+                    { lang: 'Inglés (en)', count: metrics?.db_stats?.languages?.en ?? 0, color: 'bg-gold' },
+                    { lang: 'Francés (fr)', count: metrics?.db_stats?.languages?.fr ?? 0, color: 'bg-rose' },
+                    { lang: 'Portugués (pt)', count: metrics?.db_stats?.languages?.pt ?? 0, color: 'bg-accent-rose' }
+                  ].map((item) => (
+                    <div key={item.lang} className="flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-2">
+                        <span className={`size-2.5 rounded-full ${item.color}`} />
+                        <span className="text-ink/80">{item.lang}</span>
+                      </div>
+                      <span className="font-semibold text-ink">{item.count}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="rounded-3xl bg-white/40 p-6 ring-1 ring-black/5 backdrop-blur-sm">
+                <h3 className="text-sm font-semibold text-ink mb-4">Estado de la Base de Datos</h3>
+                <div className="space-y-3 text-xs">
+                  <div className="flex justify-between border-b border-black/5 pb-2">
+                    <span className="text-ink/60">Total Mensajes Procesados</span>
+                    <span className="font-bold text-ink">{metrics?.db_stats?.total_messages ?? 0}</span>
+                  </div>
+                  <div className="flex justify-between border-b border-black/5 pb-2">
+                    <span className="text-ink/60">Conversaciones Resueltas</span>
+                    <span className="font-bold text-emerald-800">{metrics?.db_stats?.resolved_conversations ?? 0}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-ink/60">Latencia Promedio RAG</span>
+                    <span className="font-bold text-ink">{(metrics?.avg_rag_latency_seconds ?? 0).toFixed(2)}s</span>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </main>
 
-      {/* MODAL: CREAR NUEVA CONVERSACIÓN (CRUD CREATE) */}
-      {showNewModal && (
-        <div className="modal-backdrop-overlay fade-in" onClick={() => setShowNewModal(false)}>
-          <div className="modal-card glass-panel scale-in" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <div className="modal-header-title">
-                <MessageSquare size={20} className="gold-text" />
-                <h3>{language === 'es' ? 'Crear Nueva Consulta / Ticket' : 'Create New Conversation'}</h3>
+      {/* Custom Confirmation Modal */}
+      {confirmModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm animate-fade">
+          <div className="w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl ring-1 ring-black/10 animate-rise">
+            <div className="flex items-start gap-3.5 mb-3">
+              <div className="grid size-11 shrink-0 place-items-center rounded-2xl bg-rose/60 text-rose-800">
+                <Trash2 size={20} />
               </div>
-              <button className="modal-close-btn" onClick={() => setShowNewModal(false)}>✕</button>
+              <div className="flex-1">
+                <h3 className="text-sm font-bold text-ink">{confirmModal.title}</h3>
+                <p className="text-xs text-ink/70 mt-1 leading-relaxed">{confirmModal.message}</p>
+              </div>
             </div>
 
-            <form onSubmit={handleCreateConversation} className="modal-form">
-              <div className="modal-form-group">
-                <label>{language === 'es' ? 'ID de Sesión / Referencia del Estudiante:' : 'Session ID / Student Reference:'}</label>
-                <input
-                  type="text"
-                  placeholder="ej. estudiante_breyner_2026"
-                  value={newSessionId}
-                  onChange={(e) => setNewSessionId(e.target.value)}
-                  className="admin-input"
-                  required
-                />
-              </div>
-
-              <div className="modal-form-group">
-                <label>{language === 'es' ? 'Idioma:' : 'Language:'}</label>
-                <select 
-                  value={newLang} 
-                  onChange={(e) => setNewLang(e.target.value)}
-                  className="admin-input"
-                >
-                  <option value="es">🇪🇸 Español</option>
-                  <option value="en">🇬🇧 English</option>
-                  <option value="fr">🇫🇷 Français</option>
-                  <option value="pt">🇧🇷 Português</option>
-                </select>
-              </div>
-
-              <div className="modal-form-group">
-                <label>{language === 'es' ? 'Mensaje o Consulta Inicial:' : 'Initial Message / Question:'}</label>
-                <textarea
-                  placeholder={language === 'es' ? 'Ej. Deseo información para matricularme en el curso intensivo de inglés.' : 'Enter initial question...'}
-                  value={newInitialMsg}
-                  onChange={(e) => setNewInitialMsg(e.target.value)}
-                  className="admin-input modal-textarea"
-                  rows={3}
-                  required
-                />
-              </div>
-
-              <div className="modal-actions">
-                <button type="button" className="btn-modal-cancel" onClick={() => setShowNewModal(false)}>
-                  {language === 'es' ? 'Cancelar' : 'Cancel'}
-                </button>
-                <button type="submit" className="btn-modal-submit pulse-glow">
-                  <Plus size={16} />
-                  <span>{language === 'es' ? 'Crear Consulta' : 'Create Ticket'}</span>
-                </button>
-              </div>
-            </form>
+            <div className="mt-6 flex items-center justify-end gap-2.5">
+              <button
+                onClick={() => setConfirmModal(null)}
+                className="rounded-2xl px-4 py-2 text-xs font-semibold text-ink/70 hover:bg-black/5 transition"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => {
+                  const fn = confirmModal.onConfirm;
+                  setConfirmModal(null);
+                  fn();
+                }}
+                className="rounded-2xl bg-rose-600 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-rose-700 transition"
+              >
+                {confirmModal.confirmText || 'Eliminar'}
+              </button>
+            </div>
           </div>
+        </div>
+      )}
+
+      {/* Floating Toast Notification */}
+      {toast && (
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 rounded-2xl bg-ink px-4 py-3 text-xs font-medium text-cream shadow-2xl ring-1 ring-white/15 animate-rise">
+          {toast.type === 'error' ? (
+            <div className="size-2 rounded-full bg-rose shrink-0" />
+          ) : (
+            <CheckCircle2 size={16} className="text-emerald-400 shrink-0" />
+          )}
+          <span>{toast.message}</span>
+          <button
+            onClick={() => setToast(null)}
+            className="ml-2 text-cream/60 hover:text-cream text-xs font-bold"
+          >
+            ✕
+          </button>
         </div>
       )}
     </div>

@@ -93,7 +93,7 @@ class ResponseCache:
         try:
             ef = self._get_embedding_function()
             query_embeddings = ef([query])
-            if query_embeddings and query_embeddings[0] and any(query_embeddings[0]):
+            if query_embeddings is not None and len(query_embeddings) > 0 and query_embeddings[0] is not None:
                 query_vec = query_embeddings[0]
                 best_match_key = None
                 highest_sim = 0.0
@@ -103,7 +103,7 @@ class ResponseCache:
                         continue
 
                     cached_vec = cached_entry.get("embedding")
-                    if cached_vec:
+                    if cached_vec is not None:
                         sim = _cosine_similarity(query_vec, cached_vec)
                         if sim > highest_sim:
                             highest_sim = sim
@@ -151,10 +151,10 @@ class ResponseCache:
         try:
             ef = self._get_embedding_function()
             emb_res = ef([query])
-            if emb_res and emb_res[0]:
+            if emb_res is not None and len(emb_res) > 0 and emb_res[0] is not None:
                 embedding = emb_res[0]
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("No se pudo generar embedding para caché: %s", str(e))
 
         if key in self._cache:
             self._cache.move_to_end(key)

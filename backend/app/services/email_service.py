@@ -116,7 +116,7 @@ class EmailService:
             # Trigger n8n webhook if available in Docker network
             try:
                 requests.post(
-                    "http://n8n:5678/webhook/lead-whatsapp",
+                    "http://n8n:5678/webhook/leads",
                     json={
                         "admin_phone": admin_phone,
                         "student_phone": f"+{clean_phone}",

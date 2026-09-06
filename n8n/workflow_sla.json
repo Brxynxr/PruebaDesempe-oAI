@@ -1,10 +1,12 @@
 {
+  "id": "4r0e7698GH8nyaK3",
   "name": "Academia Lumina - Monitor de SLA y Alertas Telegram",
+  "active": true,
   "nodes": [
     {
       "parameters": {
         "rule": {
-          "cronExpression": "*/5 * * * *"
+          "cronExpression": "* * * * *"
         }
       },
       "type": "n8n-nodes-base.scheduleTrigger",
@@ -14,18 +16,18 @@
         300
       ],
       "id": "schedule-trigger-sla",
-      "name": "Cada 5 Minutos"
+      "name": "Cada 1 Minuto"
     },
     {
       "parameters": {
         "method": "GET",
-        "url": "http://backend:8000/api/v1/admin/conversations/sla/breached?threshold_minutes=10",
+        "url": "http://backend:8000/api/v1/admin/conversations/sla/breached?threshold_minutes=1",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
             {
               "name": "X-API-Key",
-              "value": "={{ $env.BACKEND_API_KEY || 'lumina_dev_api_key_2026' }}"
+              "value": "lumina_dev_api_key_2026"
             },
             {
               "name": "Content-Type",
@@ -46,7 +48,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const items = $input.all();\nconst rawData = items.map(i => i.json);\nconst count = Array.isArray(rawData) ? rawData.length : (rawData.id ? 1 : 0);\n\nreturn [{\n  json: {\n    count: count,\n    breached_conversations: rawData,\n    threshold_minutes: 10\n  }\n}];"
+        "jsCode": "const items = $input.all();\nconst rawData = items.map(i => i.json).filter(c => c && (c.id != null || c.session_id));\nconst count = rawData.length;\n\nlet casesSummary = '';\nif (count > 0) {\n  const topCases = rawData.slice(0, 3);\n  casesSummary = topCases.map(c => {\n    const session = c.session_id || ('ID-' + c.id);\n    const wait = c.pending_minutes != null ? (c.pending_minutes + ' min') : '>1 min';\n    const lastMsg = c.last_message ? (c.last_message.length > 70 ? c.last_message.substring(0, 67) + '...' : c.last_message) : 'Sin mensajes previos';\n    return '• <b>Sesión:</b> <code>' + session + '</code> (espera: <b>' + wait + '</b>)\\n  <i>« ' + lastMsg + ' »</i>';\n  }).join('\\n');\n}\n\nreturn [{\n  json: {\n    count: count,\n    cases_summary: casesSummary,\n    threshold_minutes: 1\n  }\n}];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -76,7 +78,7 @@
         300
       ],
       "id": "if-sla-breached",
-      "name": "¿Hay Leads en Riesgo (>10 min)?"
+      "name": "¿Hay Leads en Riesgo (>1 min)?"
     },
     {
       "parameters": {
@@ -84,7 +86,7 @@
         "url": "https://api.telegram.org/bot8856257947:AAF3buxaPS5fSmBQWPY0IG6GCjwPEdR_oyU/sendMessage",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"chat_id\": \"7761516818\",\n  \"text\": \"🚨 <b>ALERTA CRÍTICA DE SLA N8N (>10 MIN) — ACADEMIA LUMINA</b>\\n\\n⚠️ Se han detectado <b>\" + $json.count + \"</b> conversación(es) esperando atención por más de 10 minutos.\\n\\n👉 Por favor ingresar de inmediato al panel o responder en Telegram:\\nhttp://localhost:3000/admin/login\",\n  \"parse_mode\": \"HTML\"\n}",
+        "jsonBody": "={{ JSON.stringify({ chat_id: '7761516818', text: '⚠️ <b>ALERTA DE SLA — ATENCIÓN EN ESPERA</b>\\n\\nHay <b>' + $json.count + '</b> conversación(es) de estudiantes esperando atención por más de ' + $json.threshold_minutes + ' min.\\n\\n' + ($json.cases_summary ? '📋 <b>Casos prioritarios:</b>\\n' + $json.cases_summary + '\\n\\n' : '') + '⚡ <i>Prioridad: Alta • Responder de inmediato para evitar incumplimiento de SLA.</i>', parse_mode: 'HTML', reply_markup: { inline_keyboard: [ [ { text: '👉 Ingresar al Panel de Asesores', url: 'http://localhost:3000/admin' } ] ] } }) }}",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
@@ -98,7 +100,7 @@
     }
   ],
   "connections": {
-    "Cada 5 Minutos": {
+    "Cada 1 Minuto": {
       "main": [
         [
           {
@@ -124,14 +126,14 @@
       "main": [
         [
           {
-            "node": "¿Hay Leads en Riesgo (>10 min)?",
+            "node": "¿Hay Leads en Riesgo (>1 min)?",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "¿Hay Leads en Riesgo (>10 min)?": {
+    "¿Hay Leads en Riesgo (>1 min)?": {
       "main": [
         [
           {

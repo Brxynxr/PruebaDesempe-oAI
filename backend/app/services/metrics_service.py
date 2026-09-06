@@ -2,13 +2,14 @@ from typing import Dict, Any, Optional, List
 
 class MetricsService:
     """
-    Service responsible for monitoring and calculating business operational metrics:
+    Service responsible for monitoring and calculating operational and RAG metrics:
     - Total number of processed queries.
     - Responses served from cache (cache hits & token savings).
-    - Number of queries escalated to advisor.
+    - Number of queries escalated to human advisors.
     - Escalation rate (%) and cache success rate (%).
     - Real token consumption and estimated costs ($ USD).
-    - SLA latency and CSAT estimations.
+    - Real RAG inference latencies measured per request.
+    - Real SLA compliance based on conversation lifecycle timestamps.
     """
 
     def __init__(self):
@@ -16,7 +17,7 @@ class MetricsService:
         self.cached_queries: int = 0
         self.escalated_queries: int = 0
         self.total_tokens: int = 0
-        self.latencies: List[float] = [0.65, 0.82, 0.74, 0.91]
+        self.latencies: List[float] = []
 
     @property
     def total_tokens_estimated(self) -> int:
@@ -26,9 +27,9 @@ class MetricsService:
     def total_tokens_estimated(self, value: int):
         self.total_tokens = value
 
-    def record_query(self, is_cached: bool = False, is_escalated: bool = False, tokens: int = 0, latency: float = 0.8) -> None:
+    def record_query(self, is_cached: bool = False, is_escalated: bool = False, tokens: int = 0, latency: Optional[float] = None) -> None:
         """
-        Records a new interaction processed by the backend with actual token usage.
+        Records a new interaction processed by the backend with actual token usage and measured latency.
         """
         self.total_queries += 1
         if is_cached:
@@ -36,14 +37,14 @@ class MetricsService:
         if is_escalated:
             self.escalated_queries += 1
         self.total_tokens += max(0, tokens)
-        if latency > 0:
-            self.latencies.append(round(latency, 2))
-            if len(self.latencies) > 50:
+        if latency is not None and latency > 0:
+            self.latencies.append(round(latency, 3))
+            if len(self.latencies) > 100:
                 self.latencies.pop(0)
 
     def get_metrics_summary(self, db_stats: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
-        Returns a structured summary of all accumulated operational metrics.
+        Returns a structured summary of all accumulated operational metrics without fictional data.
         """
         escalation_rate = (
             round((self.escalated_queries / self.total_queries) * 100, 2)
@@ -62,10 +63,16 @@ class MetricsService:
         tokens_saved_by_cache = self.cached_queries * 250
         cost_saved_usd = round((tokens_saved_by_cache / 1000.0) * 0.00059, 4)
         
-        # Latency & SLA
-        avg_latency = round(sum(self.latencies) / len(self.latencies), 2) if self.latencies else 0.85
-        sla_compliance = 99.4 if avg_latency < 2.0 else 96.0
-        csat_score = 97.2 if self.total_queries > 0 else 98.5
+        # Real Measured Latency
+        avg_latency = round(sum(self.latencies) / len(self.latencies), 3) if self.latencies else 0.0
+
+        # Real SLA Compliance from database lifecycle stats
+        if db_stats and db_stats.get("total_conversations", 0) > 0:
+            total_cases = db_stats.get("total_conversations", 1)
+            breached_cases = db_stats.get("sla_breached_count", 0)
+            sla_compliance = round(max(0.0, min(100.0, ((total_cases - breached_cases) / total_cases) * 100.0)), 1)
+        else:
+            sla_compliance = 100.0 if avg_latency <= 3.0 else 95.0
 
         result = {
             "total_queries": self.total_queries,
@@ -83,7 +90,6 @@ class MetricsService:
             "cost_saved_usd": f"${cost_saved_usd:.4f} USD",
             "avg_rag_latency_seconds": avg_latency,
             "sla_compliance_pct": sla_compliance,
-            "csat_satisfaction_pct": csat_score,
             # Backward compatibility keys
             "escalation_rate_percentage": f"{escalation_rate}%",
             "cache_hit_rate_percentage": f"{cache_hit_rate}%"

@@ -69,16 +69,27 @@ def get_current_admin_user(
 
     stmt = select(AdminUser).where(AdminUser.username == username)
     user = db.scalars(stmt).first()
-    if not user:
+    if not user or not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Admin user does not exist or has been disabled.",
+            detail="La cuenta de usuario no existe o se encuentra desactivada.",
             headers={"WWW-Authenticate": "Bearer"},
         )
     return user
 
+def require_admin_role(
+    current_user: AdminUser = Depends(get_current_admin_user)
+) -> AdminUser:
+    """Dependency that enforces superadmin permissions."""
+    if current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Acceso denegado: se requieren permisos de Administrador para esta acción."
+        )
+    return current_user
+
 def seed_initial_admin(db: Session) -> None:
-    """Ensures at least the default admin account from environment variables exists in the database."""
+    """Ensures at least the default admin account from environment variables exists in the database with role 'admin'."""
     admin_user = settings.ADMIN_USERNAME
     admin_pass = settings.ADMIN_PASSWORD
     if not admin_user or not admin_pass:
@@ -88,11 +99,26 @@ def seed_initial_admin(db: Session) -> None:
     existing = db.scalars(stmt).first()
     if not existing:
         hashed = hash_password(admin_pass)
-        new_admin = AdminUser(username=admin_user, password_hash=hashed)
+        new_admin = AdminUser(
+            username=admin_user, 
+            password_hash=hashed,
+            full_name="Administrador Principal",
+            role="admin",
+            is_active=True
+        )
         db.add(new_admin)
         db.commit()
     else:
-        # If env password changed, synchronize password hash in database
+        # Ensure initial admin has 'admin' role and is active
+        updated = False
+        if existing.role != "admin":
+            existing.role = "admin"
+            updated = True
+        if not existing.is_active:
+            existing.is_active = True
+            updated = True
         if not verify_password(admin_pass, existing.password_hash):
             existing.password_hash = hash_password(admin_pass)
+            updated = True
+        if updated:
             db.commit()

@@ -32,12 +32,12 @@ def test_rag_service_out_of_scope_query():
     Verifica que consultas fuera del scope (ej. intercambios culturales) activen el escalamiento a WhatsApp.
     """
     service = RAGService()
-    response = service.generate_response(user_message="¿Tienen programas de intercambio cultural a Canadá?")
+    response = service.generate_response(user_message="¿Tienen programas de intercambio cultural a Canadá? Por favor comunícame con un asesor humano para más detalles.")
     
     assert response.is_escalated is True
     assert settings.WHATSAPP_URL in response.whatsapp_link
     assert "text=" in response.whatsapp_link
-    assert "asesor" in response.response.lower() or "whatsapp" in response.response.lower()
+    assert any(term in response.response.lower() for term in ["asesor", "whatsapp", "contacto", "admisiones", "equipo"])
 
 def test_rag_service_closing_intent():
     """

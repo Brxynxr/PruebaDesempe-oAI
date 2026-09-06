@@ -1,3 +1,4 @@
+import os
 import io
 import pytest
 from fastapi.testclient import TestClient
@@ -21,10 +22,10 @@ def test_document_upload_unauthorized():
 
 def test_document_upload_invalid_file_extension():
     headers = get_admin_auth_headers()
-    files = {"file": ("malicious.pdf", b"%PDF-1.4 binary content", "application/pdf")}
+    files = {"file": ("malicious.exe", b"binary content", "application/x-msdownload")}
     res = client.post("/api/v1/admin/documents/upload", files=files, headers=headers)
     assert res.status_code == 400
-    assert "Markdown" in res.json()["detail"]
+    assert "Formato no compatible" in res.json()["detail"]
 
 def test_document_upload_success_and_reindex():
     headers = get_admin_auth_headers()
@@ -33,9 +34,15 @@ La Academia Lumina cuenta con convenios de descuento del 15% para estudiantes de
 Los pagos se pueden realizar por transferencia bancaria o tarjeta de credito.
 """
     files = {"file": ("convenios_test.md", io.BytesIO(doc_content), "text/markdown")}
-    res = client.post("/api/v1/admin/documents/upload", files=files, headers=headers)
-    assert res.status_code == 200
-    data = res.json()
-    assert data["status"] == "success"
-    assert data["filename"] == "convenios_test.md"
-    assert data["total_chunks"] > 0
+    try:
+        res = client.post("/api/v1/admin/documents/upload", files=files, headers=headers)
+        assert res.status_code == 200
+        data = res.json()
+        assert data["status"] == "success"
+        assert data["filename"] == "convenios_test.md"
+        assert data["total_chunks"] > 0
+    finally:
+        data_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "app", "data")
+        test_file = os.path.join(data_dir, "convenios_test.md")
+        if os.path.exists(test_file):
+            os.remove(test_file)

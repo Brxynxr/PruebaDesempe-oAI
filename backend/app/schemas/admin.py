@@ -10,6 +10,8 @@ class AdminLoginResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     username: str
+    role: str = "asesor"
+    full_name: Optional[str] = None
 
 class MessageOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -17,6 +19,7 @@ class MessageOut(BaseModel):
     id: int
     remitente: str
     contenido: str
+    sender_username: Optional[str] = None
     timestamp: datetime
 
 class ConversationSummary(BaseModel):
@@ -63,3 +66,28 @@ class ConversationCreateRequest(BaseModel):
     idioma: Optional[str] = Field("es", description="Language code")
     estado: Optional[str] = Field("pendiente", description="Initial status")
     initial_message: Optional[str] = Field(None, description="Initial student message")
+
+class UserCreateRequest(BaseModel):
+    username: str = Field(..., min_length=3, max_length=50, description="Username")
+    password: str = Field(..., min_length=6, description="Password")
+    full_name: Optional[str] = Field(None, max_length=100, description="Full Name")
+    role: str = Field("asesor", description="Role: 'admin' or 'asesor'")
+
+class UserUpdateRequest(BaseModel):
+    full_name: Optional[str] = Field(None, description="Updated Full Name")
+    role: Optional[str] = Field(None, description="Updated Role")
+    is_active: Optional[bool] = Field(None, description="Active status")
+    password: Optional[str] = Field(None, min_length=6, description="New password")
+
+class BulkDeleteConversationsRequest(BaseModel):
+    conversation_ids: List[int] = Field(..., min_length=1, description="List of conversation IDs to delete")
+
+class UserOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    username: str
+    full_name: Optional[str] = None
+    role: str
+    is_active: bool
+    created_at: datetime

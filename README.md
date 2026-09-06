@@ -26,7 +26,7 @@ An enterprise-grade, full-stack AI Customer Support System built for **Academia 
 - **🔐 Secure Admin Portal (`/admin`)**: Protected by JWT authentication (bcrypt hashing), featuring:
   - **Executive Summary Card**: Compact ticket overview with student inquiry, extracted contact details, and collapsible full bot transcript.
   - **Guarded Live Agent Inbox**: Prevents sending messages without claiming first (`400 Bad Request` guard & input lock).
-  - **Document Uploader**: Drag & drop `.md` files with automatic text chunking and immediate ChromaDB vector re-indexing.
+  - **Document Uploader**: Drag & drop `.pdf`, `.docx`, `.md`, and `.txt` academic files with automatic text chunking and immediate ChromaDB vector re-indexing.
   - **Live Operations & SLA Dashboard**: AI autonomous resolution rate, tokens/costs ($ USD) saved by cache, Groq LPU inference metrics, latency SLA compliance, CSAT rating, and database case distribution by language and state.
 - **🛡️ 4 Cybersecurity Layers**:
   1. *Real Client IP Rate Limiting* with proxy sanitization (SlowAPI).
@@ -36,9 +36,10 @@ An enterprise-grade, full-stack AI Customer Support System built for **Academia 
 - **🌐 Multilingual Support (i18n)**: English/Spanish UI toggle and strict language-matching LLM responses.
 - **🌙 Accessible Design System**: Egyptian Sand & Gold (Light) and Obsidian Gold (Dark) palettes with 60fps transitions.
 - **⚙️ Complete n8n Automation Workflows**:
-  - `workflow.json`: RAG Router & webhook gateway.
-  - `workflow_sla.json`: Scheduled cron monitoring unassigned pending leads (>10 min) with supervisor alerts.
-  - `workflow_reportes.json`: Daily 8:00 AM executive performance and metrics digest.
+  - `workflow.json`: Real-Time Escalation Webhook with Telegram interactive inline action buttons (`[Tomar Caso]`, `[Caso Resuelto]`, `[Abrir WhatsApp]`).
+  - `workflow_leads.json`: Dedicated Commercial Webhook for student prospect and contact capture.
+  - `workflow_sla.json`: Scheduled cron monitoring unassigned pending leads (>15 min) with supervisor escalation and resolution buttons.
+  - `workflow_reportes.json`: Daily 8:00 AM executive performance and metrics digest to Telegram.
 
 ---
 
@@ -123,8 +124,8 @@ docker compose up -d --build
 ---
 
 ## 🧪 Automated Testing
-
-Execute the complete 43-test suite inside the backend container:
+ 
+Execute the complete 47-test suite inside the backend container:
 
 ```bash
 docker exec lumina_backend pytest -v
@@ -136,7 +137,7 @@ docker exec lumina_backend pytest -v
 
 > [!WARNING]
 > **Render Free-Tier Ephemeral Disk Storage Notice:**
-> Free-tier instances on cloud platforms such as Render, Railway, or Fly.io use an **ephemeral filesystem**. This means that any files written during runtime (such as the local SQLite database file `lumina.db`, vector store chunks in `./chroma_data`, or newly uploaded Markdown documents in `app/data/`) will be reset whenever the service restarts, spins down due to inactivity, or redeploys.
+> Free-tier instances on cloud platforms such as Render, Railway, or Fly.io use an **ephemeral filesystem**. This means that any files written during runtime (such as the local SQLite database file `lumina.db`, vector store chunks in `./chroma_data`, or newly uploaded documents in `app/data/`) will be reset whenever the service restarts, spins down due to inactivity, or redeploys.
 >
 > **Production Recommendation:**
 > For persistent cloud deployments:
@@ -153,26 +154,27 @@ docker exec lumina_backend pytest -v
 │   ├── app/
 │   │   ├── api/v1/endpoints/  # Chat, Lead, Admin, Health, Metrics & WebSockets
 │   │   ├── core/              # Security, Auth (JWT/Bcrypt), Guardrails & Config
-│   │   ├── data/              # Markdown Knowledge Base documents
-│   │   ├── db/                # SQLite Models, Session, Repository & ChromaDB
+│   │   ├── data/              # Official Academic Knowledge Base (PDF, DOCX, MD)
+│   │   ├── db/                # SQLite/Postgres Models, Session, Repository & ChromaDB
 │   │   ├── schemas/           # Pydantic v2 Models & Admin Schemas
 │   │   ├── services/          # RAG, Ingestion, Email, Metrics & ConnectionManager
 │   │   └── main.py            # FastAPI Entrypoint & Database Lifespan
-│   ├── tests/                 # 43 Unit and Integration Test suites
+│   ├── tests/                 # 47 Unit and Integration Test suites across 14 modules
 │   ├── Dockerfile
 │   └── requirements.txt
 ├── frontend/
 │   ├── src/
-│   │   ├── components/        # FloatingChat, AdminDashboard, AdminLogin, Hero, etc.
-│   │   ├── context/           # LanguageContext (i18n) & ThemeContext
+│   │   ├── components/        # FloatingChat, AdminDashboard, AdminLogin, LandingPage
 │   │   ├── services/          # API & WebSocket client helpers
+│   │   ├── styles.css         # Modern Tailwind CSS v4 styling
 │   │   ├── App.jsx            # Routing (/ & /admin)
-│   │   └── App.css            # Unified Design System
+│   │   └── main.jsx           # Entry point
 │   ├── Dockerfile
 │   └── package.json
 ├── n8n/
-│   ├── workflow.json          # Core RAG Router & Escalation webhook
-│   ├── workflow_sla.json      # 5-min Cron SLA breach monitor
+│   ├── workflow.json          # Core Escalation Webhook with Telegram interactive buttons
+│   ├── workflow_leads.json    # Dedicated Commercial Lead Webhook
+│   ├── workflow_sla.json      # Cron SLA breach monitor (15-min alerts)
 │   ├── workflow_reportes.json # Daily 8:00 AM executive metrics digest
 │   └── README_N8N.md          # n8n Setup & Import Guide
 ├── docker-compose.yml

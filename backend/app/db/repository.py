@@ -26,11 +26,18 @@ class ConversationRepository:
         return conv
 
     @staticmethod
-    def add_message(db: Session, conversation_id: int, remitente: str, contenido: str) -> Message:
+    def add_message(
+        db: Session, 
+        conversation_id: int, 
+        remitente: str, 
+        contenido: str,
+        sender_username: Optional[str] = None
+    ) -> Message:
         msg = Message(
             conversation_id=conversation_id,
             remitente=remitente,
-            contenido=contenido
+            contenido=contenido,
+            sender_username=sender_username
         )
         db.add(msg)
         db.commit()
@@ -105,9 +112,9 @@ class ConversationRepository:
         if res.rowcount > 0:
             return ConversationRepository.get_conversation_by_id(db, conversation_id)
         
-        # If already claimed by the same agent, return it; otherwise return None
+        # If already claimed by the same agent and still in attention, return it; otherwise return None
         conv = ConversationRepository.get_conversation_by_id(db, conversation_id)
-        if conv and conv.agente_asignado == agent_username:
+        if conv and conv.estado == "en_atencion" and conv.agente_asignado == agent_username:
             return conv
         return None
 
@@ -167,6 +174,25 @@ class ConversationRepository:
         db.delete(conv)
         db.commit()
         return True
+
+    @staticmethod
+    def delete_conversations_bulk(db: Session, conversation_ids: List[int]) -> int:
+        """
+        Deletes multiple conversations and their messages in a single transaction.
+        Returns the count of deleted conversations.
+        """
+        if not conversation_ids:
+            return 0
+        deleted_count = 0
+        for cid in conversation_ids:
+            conv = ConversationRepository.get_conversation_by_id(db, cid)
+            if conv:
+                for msg in conv.messages:
+                    db.delete(msg)
+                db.delete(conv)
+                deleted_count += 1
+        db.commit()
+        return deleted_count
 
     @staticmethod
     def update_conversation(
@@ -260,3 +286,69 @@ class ConversationRepository:
             },
             "total_messages": total_messages
         }
+
+
+class AdminUserRepository:
+    """
+    CRUD repository for managing admin and advisor user accounts.
+    """
+
+    @staticmethod
+    def get_all_users(db: Session) -> List[AdminUser]:
+        stmt = select(AdminUser).order_by(AdminUser.created_at.asc())
+        return list(db.scalars(stmt).all())
+
+    @staticmethod
+    def get_user_by_id(db: Session, user_id: int) -> Optional[AdminUser]:
+        stmt = select(AdminUser).where(AdminUser.id == user_id)
+        return db.scalars(stmt).first()
+
+    @staticmethod
+    def get_user_by_username(db: Session, username: str) -> Optional[AdminUser]:
+        stmt = select(AdminUser).where(AdminUser.username == username)
+        return db.scalars(stmt).first()
+
+    @staticmethod
+    def create_user(
+        db: Session,
+        username: str,
+        password_hash: str,
+        full_name: Optional[str] = None,
+        role: str = "asesor"
+    ) -> AdminUser:
+        user = AdminUser(
+            username=username,
+            password_hash=password_hash,
+            full_name=full_name,
+            role=role,
+            is_active=True
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+        return user
+
+    @staticmethod
+    def update_user(
+        db: Session,
+        user_id: int,
+        full_name: Optional[str] = None,
+        role: Optional[str] = None,
+        is_active: Optional[bool] = None,
+        password_hash: Optional[str] = None
+    ) -> Optional[AdminUser]:
+        user = AdminUserRepository.get_user_by_id(db, user_id)
+        if not user:
+            return None
+        if full_name is not None:
+            user.full_name = full_name
+        if role is not None:
+            user.role = role
+        if is_active is not None:
+            user.is_active = is_active
+        if password_hash is not None:
+            user.password_hash = password_hash
+        user.updated_at = datetime.now(timezone.utc)
+        db.commit()
+        db.refresh(user)
+        return user

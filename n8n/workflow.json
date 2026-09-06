@@ -1,5 +1,7 @@
 {
+  "id": "P3ySUHQ5KdBqlMFE",
   "name": "Academia Lumina - Customer Support RAG Router & Telegram Escalation",
+  "active": true,
   "nodes": [
     {
       "parameters": {
@@ -11,11 +13,12 @@
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 1,
       "position": [
-        250,
+        240,
         300
       ],
       "id": "webhook-trigger",
-      "name": "Webhook - Recepción de Consulta"
+      "name": "Webhook - Recepción de Consulta",
+      "webhookId": "chat"
     },
     {
       "parameters": {
@@ -26,7 +29,7 @@
           "parameters": [
             {
               "name": "X-API-Key",
-              "value": "={{ $env.BACKEND_API_KEY || 'lumina_dev_api_key_2026' }}"
+              "value": "lumina_dev_api_key_2026"
             },
             {
               "name": "Content-Type",
@@ -36,7 +39,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"message\": \"{{ $json.body.message }}\",\n  \"session_id\": \"{{ $json.body.session_id || 'n8n_session' }}\"\n}",
+        "jsonBody": "={{ JSON.stringify({ message: ($json.body && $json.body.message) ? $json.body.message : ($json.message || ''), session_id: ($json.body && $json.body.session_id) ? $json.body.session_id : ($json.session_id || ('n8n_' + Math.random().toString(36).substring(2, 9))), language: ($json.body && $json.body.language) ? $json.body.language : ($json.language || 'es') }) }}",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
@@ -62,7 +65,7 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
       "position": [
-        700,
+        720,
         300
       ],
       "id": "if-escalated-check",
@@ -74,13 +77,13 @@
         "url": "https://api.telegram.org/bot8856257947:AAF3buxaPS5fSmBQWPY0IG6GCjwPEdR_oyU/sendMessage",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"chat_id\": \"7761516818\",\n  \"text\": \"⚠️ <b>ALERTA DE ESCALAMIENTO N8N — ACADEMIA LUMINA</b>\\n\\n🆔 <b>ID Sesión:</b> <code>\" + $json.session_id + \"</code>\\n🤖 <b>Respuesta Bot:</b>\\n<i>\" + $json.response + \"</i>\\n\\n📲 <b>Enlace WhatsApp:</b> \" + ($json.whatsapp_link || 'No generado') + \"\\n\\n⚡ <i>Atención inmediata requerida.</i>\",\n  \"parse_mode\": \"HTML\"\n}",
+        "jsonBody": "={{ JSON.stringify({ chat_id: '7761516818', text: '🚨 <b>SOLICITUD DE ATENCIÓN HUMANA — LUMINA AI</b>\\n\\n🆔 <b>ID de Sesión:</b> <code>' + ($json.session_id || 'N/A') + '</code>\\n\\n📝 <b>Detalle del Caso:</b>\\n<i>« ' + (($json.response || '').length > 280 ? ($json.response || '').substring(0, 277) + '...' : ($json.response || 'Solicitud de escalamiento recibida')) + ' »</i>\\n\\n🔔 <i>Prioridad: Alta • Atención requerida por asesor.</i>', parse_mode: 'HTML', reply_markup: { inline_keyboard: [ [ { text: '📲 Abrir WhatsApp', url: ($json.whatsapp_link || 'https://wa.me/573000000000') } ], [ { text: '🙋‍♂️ Tomar Caso', callback_data: 'claim:' + ($json.session_id || 'default') }, { text: '✅ Caso Resuelto', callback_data: 'resolve:' + ($json.session_id || 'default') } ] ] } }) }}",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 3,
       "position": [
-        920,
+        960,
         200
       ],
       "id": "telegram-notification-node",
@@ -88,14 +91,13 @@
     },
     {
       "parameters": {
-        "options": {},
-        "respondWith": "json",
-        "responseBody": "={\n  \"response\": \"{{ $json.response }}\",\n  \"is_escalated\": {{ $json.is_escalated }},\n  \"whatsapp_link\": \"{{ $json.whatsapp_link || '' }}\",\n  \"session_id\": \"{{ $json.session_id }}\"\n}"
+        "respondWith": "firstIncomingItem",
+        "options": {}
       },
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
       "position": [
-        920,
+        960,
         420
       ],
       "id": "respond-to-webhook",
@@ -154,5 +156,7 @@
       ]
     }
   },
-  "settings": {}
+  "settings": {
+    "executionOrder": "v1"
+  }
 }

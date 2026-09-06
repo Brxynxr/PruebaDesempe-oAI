@@ -1,29 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { LanguageProvider } from './context/LanguageContext';
-import { ThemeProvider } from './context/ThemeContext';
-import Navbar from './components/Navbar';
-import Hero from './components/Hero';
-import WhyUsSection from './components/WhyUsSection';
-import ProgramsSection from './components/ProgramsSection';
-import ModalitiesSection from './components/ModalitiesSection';
-import HowItWorksSection from './components/HowItWorksSection';
-import CertificationSection from './components/CertificationSection';
-import TestimonialsSection from './components/TestimonialsSection';
-import Footer from './components/Footer';
+import LandingPage from './components/LandingPage';
 import FloatingChat from './components/FloatingChat';
-import ParticleBackground from './components/ParticleBackground';
 import AdminLogin from './components/AdminLogin';
 import AdminDashboard from './components/AdminDashboard';
-import { getAdminToken } from './services/api';
-import './App.css';
+import { getAdminToken, removeAdminToken } from './services/api';
 
-function MainAppContent() {
+export default function App() {
   const [currentPath, setCurrentPath] = useState(() => window.location.pathname);
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(() => !!getAdminToken());
-  const [activeTab, setActiveTab] = useState('home'); // 'home' | 'modalities'
   const [isChatOpen, setIsChatOpen] = useState(false);
 
-  // Listen to browser navigation popstate
+  // Sync with browser navigation
   useEffect(() => {
     const handlePopState = () => {
       setCurrentPath(window.location.pathname);
@@ -36,6 +23,7 @@ function MainAppContent() {
   const navigateTo = (path) => {
     window.history.pushState({}, '', path);
     setCurrentPath(path);
+    setIsAdminAuthenticated(!!getAdminToken());
   };
 
   const handleOpenChat = () => {
@@ -48,77 +36,37 @@ function MainAppContent() {
   };
 
   const handleLogout = () => {
+    removeAdminToken();
     setIsAdminAuthenticated(false);
     navigateTo('/admin/login');
   };
 
-  // If in admin route
+  // Admin Routes
   if (currentPath.startsWith('/admin')) {
+    if (isAdminAuthenticated) {
+      return (
+        <AdminDashboard
+          onLogout={handleLogout}
+          onBackToSite={() => navigateTo('/')}
+        />
+      );
+    }
     return (
-      <div className="app admin-portal-theme">
-        <ParticleBackground />
-        {isAdminAuthenticated ? (
-          <AdminDashboard
-            onLogout={handleLogout}
-            onBackToSite={() => navigateTo('/')}
-          />
-        ) : (
-          <AdminLogin
-            onLoginSuccess={handleLoginSuccess}
-            onBackToSite={() => navigateTo('/')}
-          />
-        )}
-      </div>
+      <AdminLogin
+        onLoginSuccess={handleLoginSuccess}
+        onBackToLanding={() => navigateTo('/')}
+      />
     );
   }
 
-  // Public Landing Page (Unchanged design, no links to /admin)
+  // Public Landing Page
   return (
-    <div className={`app theme-${activeTab}`}>
-      {/* Global Golden Particle Ambient Background */}
-      <ParticleBackground />
-
-      {/* Persistent Navbar with SPA Tabs, Theme Toggle, Language Selector & Advisor Login */}
-      <Navbar
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
+    <>
+      <LandingPage
         onOpenChat={handleOpenChat}
-        onNavigateToAdmin={() => navigateTo(isAdminAuthenticated ? '/admin' : '/admin/login')}
+        onNavigateAdmin={() => navigateTo(isAdminAuthenticated ? '/admin' : '/admin/login')}
       />
-
-      {/* Main Content: 2 clean SPA Views */}
-      <main className="spa-main-content">
-        {activeTab === 'home' && (
-          <div className="tab-view fade-in">
-            <Hero onOpenChat={handleOpenChat} />
-            <WhyUsSection />
-            <ProgramsSection onOpenChat={handleOpenChat} />
-            <TestimonialsSection />
-          </div>
-        )}
-
-        {activeTab === 'modalities' && (
-          <div className="tab-view fade-in">
-            <ModalitiesSection />
-            <HowItWorksSection />
-            <CertificationSection />
-          </div>
-        )}
-      </main>
-
-      {/* Persistent Footer and Floating AI Chat */}
-      <Footer onNavigateToAdmin={() => navigateTo(isAdminAuthenticated ? '/admin' : '/admin/login')} />
       <FloatingChat isOpen={isChatOpen} setIsOpen={setIsChatOpen} />
-    </div>
-  );
-}
-
-export default function App() {
-  return (
-    <ThemeProvider>
-      <LanguageProvider>
-        <MainAppContent />
-      </LanguageProvider>
-    </ThemeProvider>
+    </>
   );
 }

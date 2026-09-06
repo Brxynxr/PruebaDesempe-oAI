@@ -214,11 +214,12 @@ npm run dev -- --host 0.0.0.0 --port 3000
 
 ## ⚡ 6. Configuración e Importación Paso a Paso en n8n
 
-El directorio `n8n/` incluye **3 flujos de trabajo independientes** que cubren la automatización omnicanal:
+El directorio `n8n/` incluye **4 flujos de trabajo independientes** que cubren la automatización omnicanal:
 
-1. **`workflow.json`**: Enrutador Webhook para recibir consultas de canales externos, consultar el RAG de FastAPI y disparar alertas de escalamiento si se requiere.
-2. **`workflow_sla.json`**: Cron cada 5 minutos que detecta conversaciones en espera de asesor humano que superen 10 minutos de inactividad.
-3. **`workflow_reportes.json`**: Cron diario (8:00 AM) que recopila las métricas del sistema, consumo de tokens y costos estimados en USD, enviando un digest por correo a supervisores.
+1. **`workflow.json`**: Enrutador Webhook (`POST /webhook/chat`) para recibir consultas de canales externos, consultar el RAG de FastAPI y disparar alertas de escalamiento a Telegram.
+2. **`workflow_leads.json`**: Receptor Webhook (`POST /webhook/leads`) para capturar prospectos y despachar alertas inmediatas a Telegram con datos de contacto.
+3. **`workflow_sla.json`**: Cron cada 1 minuto que detecta conversaciones en espera de asesor humano que superen el umbral de inactividad.
+4. **`workflow_reportes.json`**: Cron diario (8:00 AM) que recopila las métricas del sistema, consumo de tokens y costos estimados en USD, enviando un digest por correo/Telegram a supervisores.
 
 ---
 

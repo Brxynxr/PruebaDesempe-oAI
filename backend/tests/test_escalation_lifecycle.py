@@ -52,6 +52,10 @@ def test_conversation_lifecycle_and_state_transitions():
         # 6. Advisor resolves conversation -> 'resuelto'
         conv_resolved = ConversationRepository.resolve_conversation(db, conversation_id=conv_id)
         assert conv_resolved.estado == "resuelto"
+
+        # 7. Attempting to claim a resolved conversation must fail (returns None)
+        conv_reclaim = ConversationRepository.claim_conversation(db, conversation_id=conv_id, agent_username="asesor_carlos")
+        assert conv_reclaim is None
     finally:
         db.close()
 
@@ -86,6 +90,11 @@ def test_admin_conversations_api_flow():
     resolve_res = client.post(f"/api/v1/admin/conversations/{conv_id}/resolve", headers=headers)
     assert resolve_res.status_code == 200
     assert resolve_res.json()["estado"] == "resuelto"
+
+    # Re-claiming resolved conversation must be rejected with 400 Bad Request
+    reclaim_res = client.post(f"/api/v1/admin/conversations/{conv_id}/claim", headers=headers)
+    assert reclaim_res.status_code == 400
+    assert "resuelta" in reclaim_res.json()["detail"].lower()
 
 def test_sla_breach_detection():
     db = SessionLocal()

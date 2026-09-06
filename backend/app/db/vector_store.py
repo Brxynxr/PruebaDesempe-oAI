@@ -165,6 +165,16 @@ class VectorStore:
             logger.error("ChromaDB upsert error: %s. Attempting collection reset.", str(e))
             self._reset_collection()
 
+    def delete_by_source(self, source: str):
+        """
+        Deletes all vector embeddings associated with a specific document source.
+        """
+        try:
+            self.collection.delete(where={"source": source})
+            logger.info("Deleted chunks for source '%s' from ChromaDB", source)
+        except Exception as e:
+            logger.warning("Error deleting chunks for source '%s': %s", source, str(e))
+
     def search(self, query: str, top_k: int = 6) -> List[Dict[str, Any]]:
         """
         Performs a search for the top_k most semantically similar chunks to the query.

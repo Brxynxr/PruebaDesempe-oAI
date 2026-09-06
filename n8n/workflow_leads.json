@@ -1,0 +1,60 @@
+{
+  "name": "Academia Lumina - Notificación Inmediata de Leads a Telegram",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "leads",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ],
+      "id": "webhook-lead-trigger",
+      "name": "Webhook - Lead Capturado",
+      "webhookId": "leads"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.telegram.org/bot8856257947:AAF3buxaPS5fSmBQWPY0IG6GCjwPEdR_oyU/sendMessage",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ chat_id: '7761516818', text: '🎉 <b>¡NUEVO PROSPECTO REGISTRADO! — LUMINA AI</b>\\n\\n👤 <b>Estudiante:</b> ' + ($json.body.student_name || 'Prospecto') + '\\n📞 <b>WhatsApp:</b> ' + ($json.body.student_phone || 'Sin número') + '\\n🎓 <b>Programa:</b> ' + ($json.body.program || 'Idiomas') + '\\n🆔 <b>ID de Sesión:</b> <code>' + ($json.body.session_id || 'N/A') + '</code>\\n\\n💬 <b>Mensaje de Inicio:</b>\\n<i>« ' + (($json.body.message || '').length > 250 ? ($json.body.message || '').substring(0, 247) + '...' : ($json.body.message || 'Sin mensaje adicional')) + ' »</i>\\n\\n✨ <i>Lead registrado en la plataforma en tiempo real.</i>', parse_mode: 'HTML', reply_markup: { inline_keyboard: [ [ { text: '📲 Abrir WhatsApp Directo', url: 'https://wa.me/' + ($json.body.student_phone || '').replace(/[^0-9]/g, '') } ], [ { text: '🙋‍♂️ Tomar Caso', callback_data: 'claim:' + ($json.body.session_id || 'default') }, { text: '✅ Caso Resuelto', callback_data: 'resolve:' + ($json.body.session_id || 'default') } ] ] } }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        480,
+        300
+      ],
+      "id": "telegram-lead-notification",
+      "name": "Notificar Lead a Telegram"
+    }
+  ],
+  "connections": {
+    "Webhook - Lead Capturado": {
+      "main": [
+        [
+          {
+            "node": "Notificar Lead a Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notificar Lead a Telegram": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

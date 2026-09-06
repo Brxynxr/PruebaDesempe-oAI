@@ -1,3 +1,4 @@
+import logging
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 from app.schemas.chat import ChatRequest, ChatResponse, LeadRequest
@@ -10,6 +11,8 @@ from app.core.config import settings
 from app.db.session import get_db
 from app.db.repository import ConversationRepository
 from app.services.connection_manager import manager
+
+logger = logging.getLogger("lumina.chat")
 
 router = APIRouter()
 
@@ -50,33 +53,11 @@ async def handle_chat_message(
             session_id=payload.session_id,
             user_message=payload.message,
             bot_response=response.response,
-            is_escalated=response.is_escalated,
+            is_escalated=False,  # Keep state as 'bot' in DB until student confirms handoff / submits lead
             idioma=payload.language or "es"
         )
     except Exception as e:
-        # Logging error without breaking response flow
-        pass
-
-    # If escalated, alert agents via real-time WebSocket broadcast, async email, and Telegram
-    if response.is_escalated:
-        EmailService.send_escalation_email_async(
-            user_message=payload.message,
-            assistant_response=response.response,
-            session_id=payload.session_id
-        )
-        TelegramService.send_escalation_alert(
-            user_message=payload.message,
-            assistant_response=response.response,
-            session_id=payload.session_id,
-            whatsapp_link=response.whatsapp_link
-        )
-        await manager.broadcast_to_agents({
-            "type": "new_escalation",
-            "session_id": payload.session_id,
-            "user_message": payload.message,
-            "bot_response": response.response,
-            "idioma": payload.language or "es"
-        })
+        logger.error("Error al persistir interacción de chat: %s", str(e), exc_info=True)
 
     return response
 
@@ -85,7 +66,7 @@ async def handle_chat_message(
     summary="Register student lead and notify advisor via email/telegram with direct WhatsApp link"
 )
 @limiter.limit(settings.RATE_LIMIT_PER_MINUTE)
-def handle_lead_submission(
+async def handle_lead_submission(
     request: Request,
     payload: LeadRequest,
     api_key: str = Depends(verify_api_key),
@@ -93,6 +74,7 @@ def handle_lead_submission(
 ):
     """
     Endpoint to capture student contact data when personalized attention is required.
+    Transitions conversation to 'pendiente' and alerts advisors via Telegram, Email, and WebSockets.
     """
     # Record lead in conversation if session exists
     try:
@@ -100,13 +82,13 @@ def handle_lead_submission(
         ConversationRepository.add_message(
             db, 
             conv.id, 
-            remitente="user", 
-            contenido=f"[Lead Registrado] Nombre: {payload.name}, Tel: {payload.phone}, Programa: {payload.program}, Inquietud: {payload.user_message}"
+            remitente="system", 
+            contenido=f"Lead de contacto registrado: {payload.name} (Tel: {payload.phone}, Programa: {payload.program})"
         )
         conv.estado = "pendiente"
         db.commit()
-    except Exception:
-        pass
+    except Exception as e:
+        logger.error("Error al registrar lead en la base de datos: %s", str(e), exc_info=True)
 
     EmailService.send_lead_email_async(
         student_name=payload.name,
@@ -122,8 +104,15 @@ def handle_lead_submission(
         user_message=payload.user_message,
         session_id=payload.session_id
     )
+    await manager.broadcast_to_agents({
+        "type": "new_escalation",
+        "session_id": payload.session_id,
+        "user_message": f"Lead: {payload.name} ({payload.phone}) - {payload.user_message}",
+        "bot_response": "Esperando atención de asesor...",
+        "idioma": payload.language or "es"
+    })
     return {
         "status": "success",
-        "message": f"Thank you {payload.name}! Your details have been sent to an Academia Lumina advisor. We will contact you via WhatsApp shortly."
+        "message": f"¡Gracias, {payload.name}! En unos instantes un asesor te atenderá por este chat."
     }
 

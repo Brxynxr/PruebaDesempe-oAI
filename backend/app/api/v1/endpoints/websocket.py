@@ -10,6 +10,7 @@ logger = logging.getLogger("lumina.ws")
 router = APIRouter(tags=["WebSockets"])
 
 @router.websocket("/ws/chat/{session_id}")
+@router.websocket("/chat/{session_id}")
 async def websocket_user_chat(websocket: WebSocket, session_id: str):
     """
     WebSocket endpoint for students/users.
@@ -18,13 +19,24 @@ async def websocket_user_chat(websocket: WebSocket, session_id: str):
     await manager.connect_user(websocket, session_id)
     db = SessionLocal()
     try:
-        # Fetch current conversation state
+        # Fetch current conversation state and history
         conv = ConversationRepository.get_conversation_by_session_id(db, session_id)
         if conv:
+            messages_history = [
+                {
+                    "sender": m.remitente,
+                    "text": m.contenido,
+                    "agentName": m.sender_username if m.remitente == "agent" else None,
+                    "timestamp": m.timestamp.isoformat() if m.timestamp else None
+                }
+                for m in conv.messages
+                if m.remitente in ("user", "agent", "bot") and not (m.contenido or "").startswith("[Lead Registrado]") and not (m.contenido or "").startswith("Lead de contacto registrado:")
+            ]
             await websocket.send_json({
                 "type": "session_status",
                 "estado": conv.estado,
-                "agente_asignado": conv.agente_asignado
+                "agente_asignado": conv.agente_asignado,
+                "messages": messages_history
             })
 
         while True:
@@ -64,6 +76,7 @@ async def websocket_user_chat(websocket: WebSocket, session_id: str):
         db.close()
 
 @router.websocket("/ws/agent")
+@router.websocket("/agent")
 async def websocket_agent_channel(websocket: WebSocket, token: str = Query(None)):
     """
     WebSocket endpoint for agent dashboard to receive real-time updates and incoming student messages.

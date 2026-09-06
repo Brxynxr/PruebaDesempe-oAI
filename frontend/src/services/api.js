@@ -4,7 +4,7 @@
  * document ingestion, metrics, and live agent handoff.
  */
 
-const RAW_BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000';
+const RAW_BACKEND_URL = import.meta.env.VITE_BACKEND_URL || (typeof window !== 'undefined' && window.location.hostname ? `${window.location.protocol}//${window.location.hostname}:8000` : 'http://localhost:8000');
 export const API_BASE_URL = `${RAW_BACKEND_URL.replace(/\/$/, '')}/api/v1`;
 
 // WebSocket Base URL
@@ -21,9 +21,27 @@ export function setAdminToken(token) {
   localStorage.setItem('lumina_admin_token', token);
 }
 
+export function getAdminRole() {
+  return localStorage.getItem('lumina_admin_role') || 'asesor';
+}
+
+export function setAdminRole(role) {
+  localStorage.setItem('lumina_admin_role', role);
+}
+
+export function getAdminFullName() {
+  return localStorage.getItem('lumina_admin_fullname') || '';
+}
+
+export function setAdminFullName(name) {
+  localStorage.setItem('lumina_admin_fullname', name || '');
+}
+
 export function removeAdminToken() {
   localStorage.removeItem('lumina_admin_token');
   localStorage.removeItem('lumina_admin_user');
+  localStorage.removeItem('lumina_admin_role');
+  localStorage.removeItem('lumina_admin_fullname');
 }
 
 export function getAdminUsername() {
@@ -128,6 +146,8 @@ export async function adminLogin(username, password) {
   const data = await response.json();
   setAdminToken(data.access_token);
   setAdminUsername(data.username);
+  setAdminRole(data.role || 'asesor');
+  setAdminFullName(data.full_name || data.username);
   return data;
 }
 
@@ -302,6 +322,24 @@ export async function deleteConversation(conversationId) {
 }
 
 /**
+ * Bulk delete multiple conversations.
+ */
+export async function bulkDeleteConversations(conversationIds) {
+  const response = await fetch(`${API_BASE_URL}/admin/conversations/bulk-delete`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ conversation_ids: conversationIds })
+  });
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.detail || 'Error al eliminar conversaciones');
+  }
+
+  return await response.json();
+}
+
+/**
  * Clear and purge all conversations from database (Admin cleanup).
  */
 export async function clearAllConversations() {
@@ -319,9 +357,25 @@ export async function clearAllConversations() {
 }
 
 /**
- * Upload a .md document and trigger ChromaDB re-indexing.
+ * List all knowledge base documents (PDF, DOCX, TXT, MD).
  */
-export async function uploadMarkdownDocument(file) {
+export async function getDocuments() {
+  const response = await fetch(`${API_BASE_URL}/admin/documents`, {
+    headers: getAuthHeaders()
+  });
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.detail || 'Error al obtener lista de documentos');
+  }
+
+  return await response.json();
+}
+
+/**
+ * Upload a document (PDF, Word DOCX, TXT, MD) and trigger ChromaDB re-indexing.
+ */
+export async function uploadDocument(file) {
   const formData = new FormData();
   formData.append('file', file);
 
@@ -333,7 +387,27 @@ export async function uploadMarkdownDocument(file) {
 
   if (!response.ok) {
     const err = await response.json().catch(() => ({}));
-    throw new Error(err.detail || 'Error al subir y reindexar documento');
+    throw new Error(err.detail || 'Error al subir e indexar documento');
+  }
+
+  return await response.json();
+}
+
+// Alias for backwards compatibility
+export const uploadMarkdownDocument = uploadDocument;
+
+/**
+ * Delete a knowledge base document and remove its embeddings from ChromaDB.
+ */
+export async function deleteDocument(filename) {
+  const response = await fetch(`${API_BASE_URL}/admin/documents/${encodeURIComponent(filename)}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders()
+  });
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.detail || 'Error al eliminar documento');
   }
 
   return await response.json();
@@ -349,6 +423,58 @@ export async function getMetrics() {
 
   if (!response.ok) {
     throw new Error('Error al obtener métricas del sistema');
+  }
+
+  return await response.json();
+}
+
+/**
+ * Superadmin: Fetch list of all advisors/users.
+ */
+export async function getAdminUsers() {
+  const response = await fetch(`${API_BASE_URL}/admin/users`, {
+    headers: getAuthHeaders()
+  });
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.detail || 'Error al listar usuarios asesores');
+  }
+
+  return await response.json();
+}
+
+/**
+ * Superadmin: Create a new advisor account.
+ */
+export async function createAdminUser(userData) {
+  const response = await fetch(`${API_BASE_URL}/admin/users`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(userData)
+  });
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.detail || 'Error al crear cuenta de asesor');
+  }
+
+  return await response.json();
+}
+
+/**
+ * Superadmin: Update advisor account role, status or password.
+ */
+export async function updateAdminUser(userId, userData) {
+  const response = await fetch(`${API_BASE_URL}/admin/users/${userId}`, {
+    method: 'PATCH',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(userData)
+  });
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.detail || 'Error al actualizar cuenta de asesor');
   }
 
   return await response.json();
