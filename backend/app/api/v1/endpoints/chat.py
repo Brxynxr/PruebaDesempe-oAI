@@ -3,7 +3,6 @@ from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 from app.schemas.chat import ChatRequest, ChatResponse, LeadRequest
 from app.services.rag_service import RAGService
-from app.services.email_service import EmailService
 from app.services.telegram_service import TelegramService
 from app.core.security import verify_api_key, limiter
 from app.core.guardrails import validate_prompt_injection
@@ -90,13 +89,6 @@ async def handle_lead_submission(
     except Exception as e:
         logger.error("Error al registrar lead en la base de datos: %s", str(e), exc_info=True)
 
-    EmailService.send_lead_email_async(
-        student_name=payload.name,
-        student_phone=payload.phone,
-        program=payload.program,
-        user_message=payload.user_message,
-        session_id=payload.session_id
-    )
     TelegramService.send_lead_alert(
         student_name=payload.name,
         student_phone=payload.phone,

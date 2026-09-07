@@ -29,7 +29,7 @@
           "parameters": [
             {
               "name": "X-API-Key",
-              "value": "lumina_dev_api_key_2026"
+              "value": "={{ $env.BACKEND_API_KEY }}"
             },
             {
               "name": "Content-Type",
@@ -74,10 +74,10 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://api.telegram.org/bot8856257947:AAF3buxaPS5fSmBQWPY0IG6GCjwPEdR_oyU/sendMessage",
+        "url": "=https://api.telegram.org/bot{{ $env.TELEGRAM_BOT_TOKEN }}/sendMessage",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ chat_id: '7761516818', text: '🚨 <b>SOLICITUD DE ATENCIÓN HUMANA — LUMINA AI</b>\\n\\n🆔 <b>ID de Sesión:</b> <code>' + ($json.session_id || 'N/A') + '</code>\\n\\n📝 <b>Detalle del Caso:</b>\\n<i>« ' + (($json.response || '').length > 280 ? ($json.response || '').substring(0, 277) + '...' : ($json.response || 'Solicitud de escalamiento recibida')) + ' »</i>\\n\\n🔔 <i>Prioridad: Alta • Atención requerida por asesor.</i>', parse_mode: 'HTML', reply_markup: { inline_keyboard: [ [ { text: '📲 Abrir WhatsApp', url: ($json.whatsapp_link || 'https://wa.me/573000000000') } ], [ { text: '🙋‍♂️ Tomar Caso', callback_data: 'claim:' + ($json.session_id || 'default') }, { text: '✅ Caso Resuelto', callback_data: 'resolve:' + ($json.session_id || 'default') } ] ] } }) }}",
+        "jsonBody": "={{ JSON.stringify({ chat_id: '{{ $env.TELEGRAM_CHAT_ID }}', text: '🚨 <b>SOLICITUD DE ATENCIÓN HUMANA — LUMINA AI</b>\\n\\n🆔 <b>ID de Sesión:</b> <code>' + ($json.session_id || 'N/A') + '</code>\\n\\n📝 <b>Detalle del Caso:</b>\\n<i>« ' + (($json.response || '').length > 280 ? ($json.response || '').substring(0, 277) + '...' : ($json.response || 'Solicitud de escalamiento recibida')) + ' »</i>\\n\\n🔔 <i>Prioridad: Alta • Atención requerida por asesor.</i>', parse_mode: 'HTML', reply_markup: { inline_keyboard: [ [ { text: '📲 Abrir WhatsApp', url: ($json.whatsapp_link || 'https://wa.me/573000000000') } ], [ { text: '🙋‍♂️ Tomar Caso', callback_data: 'claim:' + ($json.session_id || 'default') }, { text: '✅ Caso Resuelto', callback_data: 'resolve:' + ($json.session_id || 'default') } ] ] } }) }}",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",

@@ -27,7 +27,7 @@
           "parameters": [
             {
               "name": "X-API-Key",
-              "value": "lumina_dev_api_key_2026"
+              "value": "={{ $env.BACKEND_API_KEY }}"
             },
             {
               "name": "Content-Type",
@@ -83,10 +83,10 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://api.telegram.org/bot8856257947:AAF3buxaPS5fSmBQWPY0IG6GCjwPEdR_oyU/sendMessage",
+        "url": "=https://api.telegram.org/bot{{ $env.TELEGRAM_BOT_TOKEN }}/sendMessage",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ chat_id: '7761516818', text: '⚠️ <b>ALERTA DE SLA — ATENCIÓN EN ESPERA</b>\\n\\nHay <b>' + $json.count + '</b> conversación(es) de estudiantes esperando atención por más de ' + $json.threshold_minutes + ' min.\\n\\n' + ($json.cases_summary ? '📋 <b>Casos prioritarios:</b>\\n' + $json.cases_summary + '\\n\\n' : '') + '⚡ <i>Prioridad: Alta • Responder de inmediato para evitar incumplimiento de SLA.</i>', parse_mode: 'HTML', reply_markup: { inline_keyboard: [ [ { text: '👉 Ingresar al Panel de Asesores', url: 'http://localhost:3000/admin' } ] ] } }) }}",
+        "jsonBody": "={{ JSON.stringify({ chat_id: '{{ $env.TELEGRAM_CHAT_ID }}', text: '⚠️ <b>ALERTA DE SLA — ATENCIÓN EN ESPERA</b>\\n\\nHay <b>' + $json.count + '</b> conversación(es) de estudiantes esperando atención por más de ' + $json.threshold_minutes + ' min.\\n\\n' + ($json.cases_summary ? '📋 <b>Casos prioritarios:</b>\\n' + $json.cases_summary + '\\n\\n' : '') + '⚡ <i>Prioridad: Alta • Responder de inmediato para evitar incumplimiento de SLA.</i>', parse_mode: 'HTML', reply_markup: { inline_keyboard: [ [ { text: '👉 Ingresar al Panel de Asesores', url: 'http://localhost:3000/admin' } ] ] } }) }}",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",

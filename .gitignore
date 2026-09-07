@@ -23,3 +23,6 @@ dist/
 # OS & Temp
 .DS_Store
 Thumbs.db
+
+# SENA evidence (local only)
+sena_evidencia/

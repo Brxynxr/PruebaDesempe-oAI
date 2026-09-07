@@ -27,7 +27,7 @@
           "parameters": [
             {
               "name": "X-API-Key",
-              "value": "lumina_dev_api_key_2026"
+              "value": "={{ $env.BACKEND_API_KEY }}"
             },
             {
               "name": "Content-Type",
@@ -49,10 +49,10 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://api.telegram.org/bot8856257947:AAF3buxaPS5fSmBQWPY0IG6GCjwPEdR_oyU/sendMessage",
+        "url": "=https://api.telegram.org/bot{{ $env.TELEGRAM_BOT_TOKEN }}/sendMessage",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ chat_id: '7761516818', text: '📊 <b>INFORME EJECUTIVO DE OPERACIONES — LUMINA AI</b>\\n📅 <i>Métricas de desempeño RAG y atención</i>\\n\\n⚡ <b>Rendimiento del Asistente:</b>\\n• <b>Consultas Totales:</b> ' + ($json.total_queries || 0) + '\\n• <b>Resolución por IA:</b> ' + ($json.ai_resolution_rate_pct != null ? $json.ai_resolution_rate_pct + '%' : '100%') + '\\n• <b>Acierto en Caché:</b> ' + ($json.cache_hit_rate_pct != null ? $json.cache_hit_rate_pct + '%' : '0%') + '\\n• <b>Tasa de Escalamiento:</b> ' + ($json.escalation_rate_pct != null ? $json.escalation_rate_pct + '%' : '0%') + '\\n• <b>Cumplimiento SLA:</b> ' + ($json.sla_compliance_pct != null ? $json.sla_compliance_pct + '%' : '100%') + '\\n• <b>Latencia Promedio:</b> ' + ($json.avg_rag_latency_seconds || '0.0') + 's\\n\\n💰 <b>Consumo de Recursos:</b>\\n• <b>Tokens Procesados:</b> ' + ($json.total_tokens || 0) + '\\n• <b>Costo Estimado:</b> ' + ($json.estimated_cost_usd || '$0.00 USD') + '\\n• <b>Ahorro por Caché:</b> ' + ($json.cost_saved_usd || '$0.00 USD') + '\\n\\n👥 <b>Actividad en CRM:</b>\\n• <b>Conversaciones:</b> ' + ($json.db_stats ? $json.db_stats.total_conversations : 'N/A') + '\\n• <b>Resueltas:</b> ' + ($json.db_stats ? $json.db_stats.resolved_conversations : '0') + '\\n• <b>Pendientes / En Curso:</b> ' + ($json.db_stats ? ($json.db_stats.pending_conversations + $json.db_stats.in_progress_conversations) : '0') + '\\n\\n✨ <i>Informe generado automáticamente por Lumina AI.</i>', parse_mode: 'HTML', reply_markup: { inline_keyboard: [ [ { text: '👉 Acceder al Panel Administrativo', url: 'http://localhost:3000/admin' } ] ] } }) }}",
+        "jsonBody": "={{ JSON.stringify({ chat_id: '{{ $env.TELEGRAM_CHAT_ID }}', text: '📊 <b>INFORME EJECUTIVO DE OPERACIONES — LUMINA AI</b>\\n📅 <i>Métricas de desempeño RAG y atención</i>\\n\\n⚡ <b>Rendimiento del Asistente:</b>\\n• <b>Consultas Totales:</b> ' + ($json.total_queries || 0) + '\\n• <b>Resolución por IA:</b> ' + ($json.ai_resolution_rate_pct != null ? $json.ai_resolution_rate_pct + '%' : '100%') + '\\n• <b>Acierto en Caché:</b> ' + ($json.cache_hit_rate_pct != null ? $json.cache_hit_rate_pct + '%' : '0%') + '\\n• <b>Tasa de Escalamiento:</b> ' + ($json.escalation_rate_pct != null ? $json.escalation_rate_pct + '%' : '0%') + '\\n• <b>Cumplimiento SLA:</b> ' + ($json.sla_compliance_pct != null ? $json.sla_compliance_pct + '%' : '100%') + '\\n• <b>Latencia Promedio:</b> ' + ($json.avg_rag_latency_seconds || '0.0') + 's\\n\\n💰 <b>Consumo de Recursos:</b>\\n• <b>Tokens Procesados:</b> ' + ($json.total_tokens || 0) + '\\n• <b>Costo Estimado:</b> ' + ($json.estimated_cost_usd || '$0.00 USD') + '\\n• <b>Ahorro por Caché:</b> ' + ($json.cost_saved_usd || '$0.00 USD') + '\\n\\n👥 <b>Actividad en CRM:</b>\\n• <b>Conversaciones:</b> ' + ($json.db_stats ? $json.db_stats.total_conversations : 'N/A') + '\\n• <b>Resueltas:</b> ' + ($json.db_stats ? $json.db_stats.resolved_conversations : '0') + '\\n• <b>Pendientes / En Curso:</b> ' + ($json.db_stats ? ($json.db_stats.pending_conversations + $json.db_stats.in_progress_conversations) : '0') + '\\n\\n✨ <i>Informe generado automáticamente por Lumina AI.</i>', parse_mode: 'HTML', reply_markup: { inline_keyboard: [ [ { text: '👉 Acceder al Panel Administrativo', url: 'http://localhost:3000/admin' } ] ] } }) }}",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",

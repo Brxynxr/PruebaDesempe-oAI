@@ -1,197 +1,234 @@
-# 🏛️ Academia Lumina AI - Sistema Inteligente de Soporte Multilingüe y Atención en Vivo
+# Academia Lumina AI
 
-[![Docker Compose](https://img.shields.io/badge/Docker_Compose-Full_Stack-blue.svg)](https://www.docker.com/)
-[![Python 3.12](https://img.shields.io/badge/Python-3.12-3776AB.svg)](https://www.python.org/)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.110.0-009688.svg)](https://fastapi.tiangolo.com/)
-[![Groq LPU](https://img.shields.io/badge/Groq_LPU-Inference_~500ms-orange.svg)](https://groq.com/)
-[![ChromaDB](https://img.shields.io/badge/ChromaDB-Vector_Store-purple.svg)](https://www.trychroma.com/)
-[![React 18](https://img.shields.io/badge/React-18.2-61DAFB.svg)](https://reactjs.org/)
-[![Tailwind CSS v4](https://img.shields.io/badge/Tailwind_CSS-v4.0-38B2AC.svg)](https://tailwindcss.com/)
-[![WebSockets](https://img.shields.io/badge/WebSockets-Realtime_Handoff-green.svg)](https://fastapi.tiangolo.com/advanced/websockets/)
-[![n8n Engine](https://img.shields.io/badge/n8n-Automation_Engine-EA4B71.svg)](https://n8n.io/)
-
-**Academia Lumina AI** es una solución tecnológica integral de atención al cliente, orientación académica y soporte comercial para **Academia Lumina** (institución de enseñanza de idiomas en Colombia). Combina **Inteligencia Artificial Generativa con RAG (Retrieval-Augmented Generation)** fundamentada exclusivamente en documentos oficiales, **canales bidireccionales en tiempo real vía WebSockets para transferencia en vivo a asesores humanos (Live Human Handoff)**, **automatizaciones omnicanal con Telegram y n8n**, y un **panel administrativo integral con ingesta documental multiformato y métricas de SLA**.
+Sistema inteligente de soporte multilingüe y atención en vivo para **Academia Lumina** (Colombia). Combina RAG (Retrieval-Augmented Generation) con Groq LLM, chat en tiempo real vía WebSockets, automatización con Telegram/n8n y un panel administrativo integral.
 
 ---
 
-## 🏗️ Arquitectura General del Sistema
+## Arquitectura
 
-El sistema opera bajo una arquitectura desacoplada orientada a servicios, donde cada capa tiene responsabilidades claramente delimitadas:
-
-```mermaid
-graph TD
-    subgraph Clientes ["Canales de Usuario"]
-        Estudiante["Estudiante / Visitante Web<br>(React SPA)"]
-        AsesorWeb["Asesor de Admisiones<br>(Admin Panel Web)"]
-        AsesorTG["Asesor en Movilidad<br>(Telegram App)"]
-    end
-
-    subgraph FrontendApp ["Frontend Layer (Puerto 3000)"]
-        Landing["Landing Page Institucional"]
-        WidgetChat["FloatingChat Widget<br>(HTTP + WebSocket)"]
-        AdminConsola["Consola Administrativa<br>(Inbox + Métricas + Base RAG)"]
-    end
-
-    subgraph BackendAPI ["Backend API Layer (FastAPI - Puerto 8000)"]
-        Seguridad["4 Capas de Seguridad<br>(RateLimit, JWT/ApiKey, Guardrails, PII)"]
-        RAGService["Motor RAG + Groq LPU<br>(gpt-oss-120b / 20b)"]
-        Caché["ResponseCache<br>(TTL en Memoria)"]
-        WSManager["ConnectionManager<br>(Hub WebSockets /ws/chat y /ws/agent)"]
-        Ingesta["IngestionService<br>(PDF, DOCX, MD, TXT)"]
-        Repo["ConversationRepository<br>(Transacciones Atómicas)"]
-        Cleanup["CleanupService<br>(Auto-limpieza 30 min)"]
-    end
-
-    subgraph Almacenamiento ["Bases de Datos y Persistencia"]
-        RelacionalDB[("SQLite local / PostgreSQL Cloud<br>SQLAlchemy 2.0")]
-        VectorStore[("ChromaDB Vector Store<br>Colección lumina_knowledge_base")]
-    end
-
-    subgraph Automatizacion ["Orquestación y Servicios Externos"]
-        GroqCloud["Groq Cloud API"]
-        GeminiCloud["Google Gemini API (Embeddings)"]
-        n8nApp["n8n Automation Engine (Puerto 5678)"]
-        TelegramBot["Telegram Bot API"]
-    end
-
-    Estudiante -->|HTTP / HTTPS| Landing
-    Estudiante <-->|WebSocket /ws/chat/{id}| WSManager
-    Estudiante -->|POST /chat| Seguridad
-
-    AsesorWeb -->|HTTP / HTTPS| AdminConsola
-    AsesorWeb <-->|WebSocket /ws/agent| WSManager
-
-    Seguridad --> RAGService
-    RAGService <--> Caché
-    RAGService --> VectorStore
-    RAGService --> GroqCloud
-
-    Ingesta --> VectorStore
-    Ingesta --> GeminiCloud
-
-    WSManager <--> Repo
-    Repo <--> RelacionalDB
-    Cleanup --> RelacionalDB
-
-    BackendAPI -->|Webhooks /chat y /leads| n8nApp
-    n8nApp --> TelegramBot
-    TelegramBot <--> AsesorTG
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    FRONTEND (React + Vite + Tailwind)            │
+│   LandingPage    FloatingChat (HTTP+WS)    AdminPanel (3 tabs)  │
+└──────────────────────────┬──────────────────────────────────────┘
+                           │ HTTP + WebSocket
+┌──────────────────────────▼──────────────────────────────────────┐
+│                    BACKEND (FastAPI - Puerto 8000)               │
+│  /chat  /chat/lead  /admin/*  /metrics  /health  /ws/*          │
+│  Seguridad: X-API-Key + JWT + Guardrails + Rate Limit           │
+│  RAG: Groq gpt-oss-120b + ChromaDB + Gemini embeddings         │
+└──────┬──────────────┬───────────────────┬───────────────────────┘
+       │              │                   │
+  SQLite/Postgres  ChromaDB           Telegram Bot API
+  (conversaciones, (academia_lumina_kb) (notificaciones,
+   mensajes, admin)                     botones interactivos)
+                                         ▲
+                                    n8n (4 workflows)
+                                    chat, leads, SLA, reportes
 ```
 
----
-
-## ⚡ Flujo de Atención Conversacional (Ciclo de Vida)
-
-```mermaid
-sequenceDiagram
-    autonumber
-    actor Usuario as Estudiante (Web)
-    participant Chat as FloatingChat Widget
-    participant API as FastAPI Backend
-    participant RAG as RAG + Groq LPU
-    participant n8n as n8n / Telegram
-    actor Asesor as Asesor de Admisiones
-
-    Usuario ->> Chat: Pregunta sobre horarios de Francés
-    Chat ->> API: POST /api/v1/chat
-    API ->> RAG: Buscar contexto y generar respuesta
-    RAG -->> API: Respuesta oficial citando mallas 2026
-    API -->> Chat: Renderizado con badge de IA (~500ms)
-
-    Usuario ->> Chat: "Quiero hablar con un asesor"
-    Chat ->> API: Solicitar escalamiento (Estado: pendiente)
-    API ->> n8n: Webhook de escalamiento
-    n8n ->> Asesor: Alerta en Telegram con botones interactivos
-    API ->> Chat: Abre canal WebSocket (/ws/chat/{id})
-
-    Asesor ->> API: [Tomar Caso] (Estado: en_atencion)
-    API ->> Chat: "El asesor se ha conectado"
-    Asesor ->> API: Envía mensaje en vivo
-    API ->> Chat: Mensaje entregado instantáneamente vía WebSocket
-    Usuario ->> Chat: Responde dudas de matrícula
-    Chat ->> Asesor: Sincronizado en tiempo real
-
-    Asesor ->> API: [Caso Resuelto] (Estado: resuelto)
-    API -->> Chat: Mensaje de cierre institucional
-```
+| Servicio | Puerto | Tecnología |
+| --- | --- | --- |
+| Backend API | 8000 | FastAPI, Python 3.12, Uvicorn |
+| Frontend SPA | 3000 | React 18, Vite 5, Tailwind v4, nginx |
+| n8n | 5678 | n8nio/n8n (automatización) |
 
 ---
 
-## 🌟 Módulos y Documentación Específica
+## Instalación
 
-El proyecto se encuentra segmentado en módulos independientes, cada uno con su propia documentación detallada:
+### Requisitos
+- Docker Engine v24+ y Docker Compose v2.20+
+- Clave API de **Groq** ([console.groq.com/keys](https://console.groq.com/keys))
+- Clave API de **Google Gemini** ([aistudio.google.com](https://aistudio.google.com/))
 
-- ⚙️ **[Backend FastAPI (`backend/README.md`)](backend/README.md)**: Controladores API REST, WebSocket Hub, ciberseguridad perimetral (Rate Limiting, JWT, Guardrails), motor RAG, repositorio de datos y suite de 47 pruebas unitarias.
-- 🌐 **[Frontend React (`frontend/README.md`)](frontend/README.md)**: Landing page institucional, widget conversacional flotante con fallback HTTP/WebSocket, panel del asesor (Bandeja de chats en vivo, Dashboard de métricas y gestor documental Base RAG).
-- 🔄 **[Automatización n8n (`n8n/README.md`)](n8n/README.md)**: Los 4 flujos de automatización para escalamiento a Telegram con botones inline (`workflow.json`), captura de prospectos (`workflow_leads.json`), monitor de SLA cada 1 min (`workflow_sla.json`) y reporte matutino 8:00 AM (`workflow_reportes.json`).
-- ☁️ **[Despliegue en Render (`RENDER_DEPLOYMENT.md`)](RENDER_DEPLOYMENT.md)**: Especificación para publicar en la nube con base de datos PostgreSQL administrada y variables de entorno de producción.
+### Pasos
 
----
-
-## 🚀 Guía Rápida de Instalación y Ejecución
-
-### 1. Requisitos Previos
-- **Docker Engine** (v24+) y **Docker Compose** (v2.20+)
-- Clave de API de **Groq Cloud** ([groq.com](https://console.groq.com/keys))
-- Clave de API de **Google Gemini** ([aistudio.google.com](https://aistudio.google.com/))
-
-### 2. Configurar Variables de Entorno
-Copia los archivos de plantilla y coloca tus claves reales:
 ```bash
+git clone https://github.com/Brxynxr/PruebaDesempe-oAI.git
+cd PruebaDesempe-oAI
+
+# Configurar variables de entorno
 cp backend/.env.example backend/.env
 cp frontend/.env.example frontend/.env
-```
-*Edita `backend/.env` e ingresa tu `GROQ_API_KEY` y `GEMINI_API_KEY`.*
+# Editar backend/.env con tus GROQ_API_KEY y GEMINI_API_KEY
 
-### 3. Iniciar la Plataforma Completa con Docker
-```bash
+# Levantar todo
 docker compose up -d --build
 ```
 
-### 4. URLs de Acceso a los Servicios
-| Servicio | URL Local | Credenciales por Defecto |
-| :--- | :--- | :--- |
-| 🌐 **Portal Web y Chat Estudiante** | [http://localhost:3000](http://localhost:3000) | Acceso público libre |
-| 🔒 **Panel del Asesor y Administrador** | [http://localhost:3000/admin](http://localhost:3000/admin) | Usuario: `admin` \| Contraseña: `LuminaAdmin2026!` |
-| ⚡ **Backend API y Swagger Docs** | [http://localhost:8000/docs](http://localhost:8000/docs) | Cabecera: `X-API-Key: lumina_secret_key_2026` |
-| 🩺 **Sonda de Salud (Health Check)** | [http://localhost:8000/api/v1/health](http://localhost:8000/api/v1/health) | Acceso público |
-| 📊 **Endpoint de Métricas Operativas**| [http://localhost:8000/api/v1/metrics](http://localhost:8000/api/v1/metrics) | Requiere Bearer JWT o API Key |
-| ⚙️ **Consola de Automatización n8n** | [http://localhost:5678](http://localhost:5678) | Configurable en primer ingreso |
+### URLs de acceso
 
-### 5. Verificación de Pruebas Automatizadas (Pytest)
-Ejecuta la suite completa de 47 pruebas dentro del contenedor:
+| Servicio | URL |
+| --- | --- |
+| Portal Web y Chat | http://localhost:3000 |
+| Panel del Asesor | http://localhost:3000/admin |
+| Swagger API | http://localhost:8000/docs |
+| Health Check | http://localhost:8000/api/v1/health |
+| Métricas | http://localhost:8000/api/v1/metrics |
+| Consola n8n | http://localhost:5678 |
+
+### Credenciales por defecto (desarrollo)
+
+| Credencial | Valor |
+| --- | --- |
+| Admin usuario | `admin` |
+| Admin contraseña | `LuminaAdmin2026!` |
+| X-API-Key (dev) | `lumina_dev_api_key_2026` |
+
+> En producción, todas las credenciales se configuran como variables de entorno. Nunca usar valores de desarrollo.
+
+### Pruebas
+
 ```bash
 docker exec lumina_backend pytest -v
 ```
-*Resultado esperado: **47 passed, 100% de cobertura operacional**.*
+47 pruebas automatizadas (pytest + httpx).
 
 ---
 
-## 📖 Manual de Uso Conciso por Roles
+## Módulos
 
-### 🎓 1. Visitante / Estudiante Web
-1. Ingresa a `http://localhost:3000`.
-2. Haz clic en el botón flotante del chat (esquina inferior derecha).
-3. Pregunta cualquier duda sobre cursos, aranceles 2026, becas o certificaciones (ej. *"¿Qué costo tiene el nivel B1 de inglés?"*).
-4. Para hablar con un humano, escribe *"Quiero hablar con un asesor"*. La interfaz te mantendrá conectado en vivo con el equipo de admisiones.
+### Backend (`backend/`)
 
-### 💼 2. Asesor de Admisiones
-1. Ingresa a `http://localhost:3000/admin` con tus credenciales.
-2. En la pestaña **"Bandeja de Chats"**, selecciona una conversación pendiente.
-3. Haz clic en **`[Tomar caso]`** para asignártela de forma exclusiva.
-4. Escribe tus respuestas en el campo de texto inferior; los mensajes se transmiten al estudiante instantáneamente por WebSockets.
-5. Al finalizar la atención, pulsa **`[Marcar Resuelto]`**.
+| Capa | Archivos clave | Responsabilidad |
+| --- | --- | --- |
+| Core | `config.py`, `security.py`, `auth.py`, `guardrails.py` | Configuración, API key, JWT/bcrypt, anti prompt-injection |
+| DB | `models.py`, `session.py`, `repository.py`, `cache.py`, `vector_store.py` | ORM (Conversation, Message, AdminUser), SQLite/PostgreSQL, caché semántica, ChromaDB |
+| API | `endpoints/chat.py`, `admin.py`, `websocket.py`, `metrics.py`, `health.py` | REST + WebSocket |
+| Services | `rag_service.py`, `ingestion_service.py`, `telegram_service.py`, `metrics_service.py`, `cleanup_service.py`, `connection_manager.py` | RAG+Groq, ingesta docs, Telegram omnicanal, métricas, limpieza, hub WS |
 
-### 🛠️ 3. Administrador / Supervisor
-1. En la pestaña **"Métricas y SLA"**, audita el porcentaje de resolución autónoma de la IA, cumplimiento de tiempos de respuesta, distribución de idiomas y ahorro de costos por caché.
-2. En la pestaña **"Base RAG"**, arrastra y sube nuevos documentos curriculares (`.pdf`, `.docx`, `.md`, `.txt`) para que el bot actualice su conocimiento en tiempo real sin reiniciar el servidor.
+### Frontend (`frontend/`)
+
+| Componente | Líneas | Función |
+| --- | --- | --- |
+| `LandingPage.jsx` | 526 | Página promocional (hero, programas, beneficios, proceso, certificación) |
+| `FloatingChat.jsx` | 740 | Widget de chat flotante (HTTP + WebSocket handoff) |
+| `AdminLogin.jsx` | 132 | Login JWT del portal de asesores |
+| `AdminDashboard.jsx` | 1385 | Panel: Bandeja de Chats, Base RAG, Métricas y SLA |
+
+### Automatización (`n8n/`)
+
+| Workflow | Trigger | Función |
+| --- | --- | --- |
+| `workflow.json` | Webhook POST /chat | Router RAG + escalamiento Telegram con botones interactivos |
+| `workflow_leads.json` | Webhook POST /leads | Notificación de leads comerciales a Telegram |
+| `workflow_sla.json` | Cron cada 1 min | Supervisor SLA: alerta conversaciones pendientes >1 min |
+| `workflow_reportes.json` | Cron 8:00 AM | Reporte diario de métricas a Telegram |
+
+> Los workflows usan variables de entorno de n8n (`$env.TELEGRAM_BOT_TOKEN`, `$env.TELEGRAM_CHAT_ID`, `$env.BACKEND_API_KEY`). Configurarlas en la consola de n8n.
+
+### Suite de pruebas (`backend/tests/`)
+
+47 pruebas en 14 archivos: admin auth (7), cache (3), CORS (2), documents upload (3), edge cases (5), email removed, escalation lifecycle (4), health (2), metrics (3), RAG search (2), RAG service (4), rate limit (1), security (4), Telegram isolation (2).
 
 ---
 
-## 👥 Créditos e Información del Autor
+## Modelo de datos
 
-- **Autor / Candidato**: Breyner De Jesus Manga Arias
-- **Documento de Identidad**: C.C. 1043668249
-- **Institución**: SENA - Centro Nacional Colombo Alemán
-- **Repositorio Oficial**: [https://github.com/Brxynxr/PruebaDesempe-oAI.git](https://github.com/Brxynxr/PruebaDesempe-oAI.git)
+```sql
+CREATE TABLE conversations (
+    id INTEGER PRIMARY KEY,
+    session_id VARCHAR(100) UNIQUE NOT NULL,
+    idioma VARCHAR(10) DEFAULT 'es' NOT NULL,
+    estado VARCHAR(30) DEFAULT 'bot' NOT NULL,  -- bot|pendiente|en_atencion|resuelto
+    agente_asignado VARCHAR(100),
+    created_at DATETIME NOT NULL,
+    updated_at DATETIME NOT NULL
+);
+
+CREATE TABLE messages (
+    id INTEGER PRIMARY KEY,
+    conversation_id INTEGER NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+    remitente VARCHAR(20) NOT NULL,  -- user|bot|agent
+    contenido TEXT NOT NULL,
+    sender_username VARCHAR(50),
+    timestamp DATETIME NOT NULL
+);
+
+CREATE TABLE admin_users (
+    id INTEGER PRIMARY KEY,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    full_name VARCHAR(100),
+    role VARCHAR(20) DEFAULT 'asesor' NOT NULL,  -- admin|asesor
+    is_active BOOLEAN DEFAULT 1 NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    created_at DATETIME NOT NULL,
+    updated_at DATETIME NOT NULL
+);
+```
+
+---
+
+## Variables de entorno principales
+
+| Variable | Descripción | Default dev |
+| --- | --- | --- |
+| `GROQ_API_KEY` | Clave API Groq para inferencia LLM | (requerida) |
+| `GEMINI_API_KEY` | Clave API Google para embeddings | (requerida) |
+| `BACKEND_API_KEY` | API key interna (frontend↔backend↔n8n) | `lumina_dev_api_key_2026` |
+| `ADMIN_USERNAME` | Usuario admin inicial | `admin` |
+| `ADMIN_PASSWORD` | Contraseña admin inicial | `LuminaAdmin2026!` |
+| `JWT_SECRET_KEY` | Secreto para firmar JWT | (auto en dev) |
+| `TELEGRAM_BOT_TOKEN` | Token del bot de Telegram | (requerida para Telegram) |
+| `TELEGRAM_CHAT_ID` | Chat ID del grupo de Telegram | (requerida para Telegram) |
+| `DATABASE_URL` | URL de BD (vacío = SQLite local) | SQLite `backend/app/lumina.db` |
+| `RATE_LIMIT_PER_MINUTE` | Límite de peticiones por IP | `10/minute` |
+
+---
+
+## Despliegue en producción (Render)
+
+El archivo `render.yaml` configura automáticamente:
+- **Backend**: servicio web Uvicorn con health check en `/api/v1/health`
+- **Frontend**: servicio estático con rewrite SPA (`/ → /index.html`)
+- **Base de datos**: PostgreSQL administrado `lumina-postgres`
+
+Pasos:
+1. Crear cuenta en [render.com](https://render.com)
+2. Conectar el repositorio GitHub
+3. Render detecta `render.yaml` y crea los servicios
+4. Configurar variables de entorno sensibles en el Dashboard de Render (GROQ_API_KEY, GEMINI_API_KEY, ADMIN_PASSWORD, JWT_SECRET_KEY, TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, BACKEND_API_KEY)
+5. Los servicios se despliegan automáticamente
+
+---
+
+## Estructura del proyecto
+
+```
+PruebaDesempe-oAI/
+├── backend/
+│   ├── app/
+│   │   ├── main.py              # Bootstrap: BD, seed admin, ingestión RAG, Telegram, limpieza
+│   │   ├── api/v1/endpoints/    # REST + WebSocket
+│   │   ├── core/                # Config, auth, security, guardrails
+│   │   ├── db/                  # ORM, sesión, repositorios, caché, vectores
+│   │   ├── schemas/             # Pydantic request/response
+│   │   └── services/            # RAG, ingesta, Telegram, métricas, WS, limpieza
+│   ├── app/data/                # Base de conocimiento (4 documentos)
+│   ├── tests/                   # 47 pruebas pytest
+│   ├── Dockerfile
+│   └── requirements.txt
+├── frontend/
+│   ├── src/
+│   │   ├── components/          # Landing, Chat, Login, Dashboard
+│   │   ├── services/api.js      # Cliente HTTP/WS
+│   │   └── App.jsx              # Enrutado
+│   ├── Dockerfile
+│   ├── nginx.conf
+│   └── vite.config.js
+├── n8n/                         # 4 workflows JSON
+├── sena_evidencia/              # Evidencia técnica (diagramas, modelo datos, manual)
+├── documents/                   # Formatos oficiales SENA
+├── docker-compose.yml
+├── render.yaml
+└── README.md
+```
+
+---
+
+## Créditos
+
+- **Autor**: Breyner De Jesus Manga Arias
+- **Repositorio**: [github.com/Brxynxr/PruebaDesempe-oAI](https://github.com/Brxynxr/PruebaDesempe-oAI.git)
 - **Año**: 2026

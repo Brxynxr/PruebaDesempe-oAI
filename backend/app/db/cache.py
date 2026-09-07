@@ -27,7 +27,7 @@ def _tokenize(text: str) -> Set[str]:
     return {w for w in cleaned.split() if len(w) > 2 and w not in stop_words}
 
 def _cosine_similarity(vec1: List[float], vec2: List[float]) -> float:
-    if not vec1 or not vec2 or len(vec1) != len(vec2):
+    if vec1 is None or vec2 is None or len(vec1) == 0 or len(vec2) == 0 or len(vec1) != len(vec2):
         return 0.0
     dot_product = sum(a * b for a, b in zip(vec1, vec2))
     norm_a = math.sqrt(sum(a * a for a in vec1))
